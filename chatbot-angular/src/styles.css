@@ -1,2 +1,89 @@
-/* You can add global styles to this file, and also import other style files */
-@import "tailwindcss";
+/* General styles for the body */
+body {
+  background-color: rgb(7, 7, 32); /* Fondo negro */
+  color: #ccc; /* Texto gris claro */
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+/* Sidebar */
+.sidebar {
+  position: fixed;
+  top: 0;
+  left: -250px; /* Initially hide sidebar */
+  width: 250px;
+  height: 100vh;
+  background-color: #333; /* Gris oscuro */
+  color: white;
+  transition: left 0.3s ease-in-out;
+  z-index: 1000; /* Make sure sidebar stays on top */
+}
+
+.sidebar.open {
+  left: 0; /* Show sidebar */
+}
+
+.sidebar .close-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  font-size: 24px;
+  cursor: pointer;
+  color: white;
+}
+
+.sidebar ul {
+  list-style: none;
+  padding: 20px;
+}
+
+.sidebar ul li a {
+  color: #ccc; /* Gris claro para los enlaces */
+  text-decoration: none;
+  display: block;
+  padding: 10px;
+  font-size: 18px;
+}
+
+.sidebar ul li a:hover {
+  background-color: #444; /* Gris intermedio en hover */
+}
+
+/* Content area */
+.content {
+  padding: 20px;
+  transition: margin-left 0.3s ease-in-out;
+  color: #ccc; /* Texto gris claro */
+}
+
+.content.shift {
+  margin-left: 250px; /* Move content to the right when sidebar is open */
+}
+
+/* Header button for toggle */
+header button {
+  background-color: #333; /* Gris oscuro */
+  color: white;
+  border: none;
+  padding: 15px;
+  font-size: 24px;
+  cursor: pointer;
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  z-index: 1100; /* To keep the button above the sidebar */
+}
+
+header button:hover {
+  background-color: #444; /* Gris intermedio */
+}
+
+.logo {
+  position: fixed;
+  top: 15px; /* Ajusta la distancia desde el borde superior */
+  right: 15px; /* Ajusta la distancia desde el borde derecho */
+  width: clamp(100px, 10vw, 200px); /* Tamaño dinámico entre 100px y 200px */
+  height: auto; /* Mantiene la relación de aspecto */
+  z-index: 1200; /* Asegura que esté por encima de otros elementos */
+}

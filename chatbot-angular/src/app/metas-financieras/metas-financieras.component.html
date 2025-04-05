@@ -1,0 +1,27 @@
+<div class="contentCenter">Metas Financieras</div>
+
+<div class="container">
+  <div class="sliders-container">
+    <div *ngFor="let meta of metas" class="meta-item">
+      <span class="meta-label">{{ meta.nombre }}</span>
+
+      <input
+        type="range"
+        min="0"
+        max="100"
+        step="1"
+        [(ngModel)]="meta.valor"
+        (input)="ajustarValores(meta)"
+        [disabled]="meta.bloqueado || isLastUnlocked()"
+      />
+
+      <span class="meta-value">{{ meta.valor | number:'1.0-0' }}%</span>
+
+      <button class="lock-btn" (click)="meta.bloqueado = !meta.bloqueado">
+        {{ meta.bloqueado ? '🔒' : '🔓' }}
+      </button>
+    </div>
+  </div>
+
+  <button class="save-btn" (click)="guardarMetas()">Guardar</button>
+</div>

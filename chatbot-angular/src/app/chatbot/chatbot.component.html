@@ -1,0 +1,27 @@
+<!-- Contenedor centrado -->
+<div class="contentCenter">
+  <h1>Personal Financial Tracker</h1>
+</div>
+
+<!-- Chatbot -->
+<div class="chat-container">
+  <div class="header">Chat</div>
+
+  <!-- Área de mensajes con auto-scroll -->
+  <div class="messages" #chatContainer>
+    <div *ngFor="let msg of messages" [ngClass]="{'user': msg.sender === 'User', 'bot': msg.sender === 'Bot'}">
+      <span class="msg-text">{{ msg.text }}</span>
+    </div>
+  </div>
+
+  <!-- Área de entrada -->
+  <div class="input-container">
+    <input type="text" [(ngModel)]="userInput" (keyup.enter)="sendMessage()" placeholder="Escribe un mensaje..." />
+    <button (click)="sendMessage()">Enviar</button>
+  </div>
+
+  <!-- Botón para finalizar y descargar Excel, visible solo cuando excelDisponible es true -->
+  <div *ngIf="excelDisponible" class="finalize-container">
+    <button (click)="finalizeConversation()">Finalizar y Descargar Excel</button>
+  </div>
+</div>

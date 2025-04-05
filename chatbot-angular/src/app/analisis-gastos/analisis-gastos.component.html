@@ -1,0 +1,22 @@
+<div class="contentCenter">Análisis de Gastos</div>
+
+<div class="analisis-container">
+  <div class="gastos-list">
+    <h3>Gastos por categoría</h3>
+    <ul>
+      <li *ngFor="let gasto of gastos">
+        {{ gasto.categoria }}: <span class="monto">${{ gasto.monto }}</span>
+      </li>
+    </ul>
+  </div>
+
+  <div class="resumen">
+    <p><strong>Total Gastado:</strong> <span class="monto">${{ totalGasto }}</span></p>
+    <p><strong>Categoría con mayor gasto:</strong> <span class="categoria">{{ categoriaMayorGasto }}</span></p>
+  </div>
+
+  <div class="consejo">
+    <h3>Consejo Financiero</h3>
+    <p>{{ consejo }}</p>
+  </div>
+</div>

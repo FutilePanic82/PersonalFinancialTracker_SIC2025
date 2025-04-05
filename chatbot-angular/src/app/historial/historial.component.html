@@ -1,0 +1,10 @@
+<div class="historial-title">Historial de Archivos</div>
+
+<div class="historial-container">
+  <div *ngFor="let archivo of historialArchivos" class="historial-card">
+    <h3>{{ archivo.nombre }}</h3>
+    <p><strong>Fecha:</strong> {{ archivo.fecha }}</p>
+    <p><strong>Tamaño:</strong> {{ archivo.tamano }}</p>
+    <button class="descargar-btn">Descargar</button>
+  </div>
+</div>

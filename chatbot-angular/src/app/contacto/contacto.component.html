@@ -1,0 +1,12 @@
+<div class="contact-title">Información de Contacto</div>
+
+<div class="contact-container">
+  <div *ngFor="let contacto of contactos" class="contact-card">
+    <img [src]="contacto.foto" alt="Foto de {{contacto.nombre}}" class="contact-photo">
+    <div class="contact-info">
+      <h3>{{ contacto.nombre }}</h3>
+      <p><strong>Email:</strong> {{ contacto.email }}</p>
+      <p><strong>Teléfono:</strong> {{ contacto.telefono }}</p>
+    </div>
+  </div>
+</div>
