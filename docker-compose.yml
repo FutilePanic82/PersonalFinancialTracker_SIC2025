@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  backend:
+    build: ./Backend&Algorithms
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./Backend&Algorithms/finanzas.db:/app/finanzas.db
+      - ./Backend&Algorithms/reportes:/app/reportes
+      # Mount source for dev/hot-reload (optional, but useful)
+      # - ./Backend&Algorithms:/app
+    environment:
+      - LLM_MODE=ollama
+      - LLM_MODEL=llama3.2:3b
+      # For Ollama to work from inside the container, it needs to reach the host
+      - OLLAMA_HOST=http://host.docker.internal:11434
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  frontend:
+    build: ./chatbot-angular
+    ports:
+      - "80:80"
+    depends_on:
+      - backend

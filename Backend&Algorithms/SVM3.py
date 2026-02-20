@@ -17,7 +17,7 @@ from tqdm import tqdm
 # ── Configuración de Rutas ─────────────────────────────────────────────────────
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_DIR = os.path.join(BASE_DIR, "..", "DataBase")
-CSV_PATH = os.path.join(DB_DIR, "archivo_modificado.csv")
+CSV_PATH = os.path.join(DB_DIR, "GASTOS_CLASIFICADOS2.csv") # Usar el dataset con mejores categorías
 
 # ── Configuración de Device ────────────────────────────────────────────────────
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -29,16 +29,25 @@ def main():
         return
 
     print("Cargando dataset...")
-    # Cargar el archivo CSV
     df = pd.read_csv(CSV_PATH)
 
-    # Tomar solo una muestra del 10% de los datos para agilizar (ajustable)
-    df = df.sample(frac=0.1, random_state=42)
-    print(f"Dataset cargado: {len(df)} registros para entrenamiento.")
+    # Filtrar posibles filas con valores nulos en columnas críticas
+    df = df.dropna(subset=['descripcion', 'categoria_desc'])
+    
+    # Filtrar etiquetas ruidosas (como números o "etcétera")
+    # Nos quedamos solo con las categorías principales que detectamos antes
+    valid_categories = [
+        'Alimentos', 'Artículos domésticos', 'Comunicaciones', 
+        'Cuidado personal', 'Educación y recreación', 'Gastos diversos', 
+        'Salud', 'Transporte', 'Vestimenta', 'Vivienda'
+    ]
+    df = df[df['categoria_desc'].isin(valid_categories)]
+
+    print(f"Dataset cargado y filtrado: {len(df)} registros para entrenamiento.")
 
     # Codificar la columna de categorías
     le = LabelEncoder()
-    df['tipo_gasto'] = le.fit_transform(df['tipo_gasto'])
+    df['tipo_gasto'] = le.fit_transform(df['categoria_desc'])
 
     # Cargar modelo BERT
     print("Cargando DistilBERT...")
@@ -56,11 +65,7 @@ def main():
     # Generar embeddings de BERT
     print("Generando embeddings...")
     tqdm.pandas()
-    # Asegúrate de usar la columna correcta con la descripción del gasto
-    # En el script original era 'categoria_num', pero probablemente sea 'descripcion' o similar en tu CSV nuevo.
-    # Ajusta 'categoria_num' si tu CSV tiene otro nombre para la columna de texto.
-    col_texto = 'categoria_num' if 'categoria_num' in df.columns else df.columns[0] 
-    df['bert_embedding'] = df[col_texto].astype(str).progress_apply(procesar_con_bert)
+    df['bert_embedding'] = df['descripcion'].astype(str).progress_apply(procesar_con_bert)
 
     # Convertir embeddings a matriz
     X_bert = np.vstack(df['bert_embedding'].values)

@@ -50,3 +50,7 @@ Backend&Algorithms/reportes/
 .env
 .logs/
 Backend
+
+generate_readme.py
+README.md
+*.pdf
