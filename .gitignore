@@ -41,7 +41,6 @@ Backend&Algorithms/run_synthetic_tests.py
 .pids
 finanzas.xlsx
 headers.txt
-Backend&Algorithms/metrics_summary.png
 Backend&Algorithms/reportes/
 
 # Gemini agent
