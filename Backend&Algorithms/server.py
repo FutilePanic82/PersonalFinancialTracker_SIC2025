@@ -1,73 +1,329 @@
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+"""
+server.py — Personal Financial Tracker · FastAPI backend
+==========================================================
+Endpoints
+---------
+POST /conversation        — Chat with the LLM; extracts & classifies transactions
+GET  /historial           — Return all stored transactions
+POST /finalize            — Generate, save, and download Excel file
+GET  /reportes            — List generated Excel reports
+GET  /reportes/{id}/download — Download a specific report
+POST /predict             — Polynomial-regression spending prediction
+POST /metas               — LLM advice on budget goals
+DELETE /reset             — Clear in-memory conversation (keeps DB records)
+"""
+from __future__ import annotations
+
+import json
+import logging
+import re
+import os
+from datetime import datetime
+from io import BytesIO
+
 import ollama
+import pandas as pd
+from fastapi import FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
-import re  
+from fastapi.responses import FileResponse
+from pydantic import BaseModel
 
-app = FastAPI()
+from classifier import clasificar
+from database import init_db, insertar_transaccion, obtener_transacciones, insertar_reporte, obtener_reportes
+from predictor import predecir
 
-# Permitir CORS para Angular
+# ── Constants ──────────────────────────────────────────────────────────────────
+LLM_MODEL = "llama3.2:3b"
+
+# ── Logging ────────────────────────────────────────────────────────────────────
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s — %(message)s",
+)
+logger = logging.getLogger(__name__)
+
+# ── DB bootstrap ───────────────────────────────────────────────────────────────
+init_db()
+
+# ── FastAPI app ────────────────────────────────────────────────────────────────
+app = FastAPI(title="Personal Financial Tracker API", version="2.0.0")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:4200"],  # Ajusta si Angular está en otro dominio
+    allow_origins=["http://localhost:4200"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Prompt global (se usa solo al inicio)
-global_prompt = {
-    "role": "system",
-    "content": "Eres un agente especializado en finanzas personales. Responde solo en español. Tu objetivo es generar un archivo Excel con los gastos mensuales del usuario. Debes hacer preguntas hasta obtener toda la información necesaria y hacerlas una a una. Si es tu primera interaccion"
-    "deberas comenzar preguntando por su ingreso mensual, todos los meses deberas preguntar si recibio algun ingreso extra, deberas de confirmar si termino de ingresar sus ingresos,"
-    "despues de terminar con sus ingresos deberas con sus gastos fijos mensuales en la primera interaccion, si no es la primera se los deberas mostrar y preguntarle si los confirma."
-    "Despues de terminar con los gastos fijos deberas preguntarle acerca de sus gastos uno a uno de ese mes hasta que el usuario confirme de no mas gastos. Una vez concluido estos pasos "
-    "deberas generar el archivo excel."
-    "Si necesitas preguntar acerca de algo no olvides que debes esperar la respuesta del usaurio, Siempre debes hacer preguntas que devuelvan solamente una respuesta. Haz preguntas especificas"
-    "y si dudas de algo pregunta hasta estar mas de 90 por ciento seguro."
-    "Extrae solo el concepto de gasto o ingreso de las entradas del usuario y devuélvelo sin información adicional, si no hay informacion relevante "
-}
+# ── System prompt ──────────────────────────────────────────────────────────────
+_SYSTEM_PROMPT = """Eres un asistente de finanzas personales amigable y conciso. 
+Tu tarea principal es ayudar al usuario a registrar sus ingresos y gastos.
+Cuando el usuario mencione una transacción (gasto o ingreso), extrae la información
+y confirma que fue registrada. 
+Responde siempre en español y de forma breve (máximo 3 oraciones).
+Si el usuario dice 'finalizar', 'descárgalo' o 'generar excel', confirma que puede
+pulsar el botón de descarga."""
 
-# Historial de conversación
-chat_history = []
+# ── In-memory conversation (single user) ───────────────────────────────────────
+_chat_history: list[dict] = [{"role": "system", "content": _SYSTEM_PROMPT}]
 
-# Modelo de datos para la solicitud
-class PromptRequest(BaseModel):
-    prompt: str
+# ── Extraction prompt injected silently ────────────────────────────────────────
+_EXTRACTION_SYSTEM = """Eres un extractor de datos financieros.
+A partir del mensaje del usuario extrae TODAS las transacciones mencionadas.
+Devuelve SOLO un array JSON (sin markdown) con objetos:
+{"concepto": string, "monto": number, "tipo": "gasto"|"ingreso"}
+Si no hay transacciones, devuelve [].
+Ejemplo: [{"concepto":"comida","monto":200,"tipo":"gasto"}]"""
 
-@app.post("/generate")
-def generate_response(request: PromptRequest):
-    global chat_history
 
+# ── Pydantic models ────────────────────────────────────────────────────────────
+class ConversationRequest(BaseModel):
+    chat_history: list[dict]
+
+
+class PredictRequest(BaseModel):
+    ingresos: float
+    hijos: int
+    edad: int
+    educacion: int          # 0=Primaria 1=Secundaria 2=Universidad 3=Posgrado
+
+
+class MetasRequest(BaseModel):
+    metas: list[dict]       # [{nombre: str, valor: int}]
+
+
+# ── Helpers ────────────────────────────────────────────────────────────────────
+def _llm(messages: list[dict]) -> str:
+    """Call Ollama and strip any <think> tags from the response."""
+    resp = ollama.chat(model=LLM_MODEL, messages=messages)
+    text = resp["message"]["content"]
+    return re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
+
+
+def _extract_transactions(user_msg: str) -> list[dict]:
+    """
+    Ask the LLM to extract structured transactions from user_msg.
+    Returns a list of dicts: {concepto, monto, tipo}.
+    """
+    messages = [
+        {"role": "system", "content": _EXTRACTION_SYSTEM},
+        {"role": "user",   "content": user_msg},
+    ]
+    raw = _llm(messages)
+    logger.info("Extraction raw output: %s", raw)
+    # Try JSON parse; fall back to regex if LLM wraps in markdown
+    clean = re.sub(r"```(?:json)?|```", "", raw).strip()
     try:
-        # Solo agregamos el prompt global en la primera interacción
-        if not chat_history:
-            chat_history.append(global_prompt)
+        data = json.loads(clean)
+        if isinstance(data, list):
+            return data
+    except json.JSONDecodeError:
+        pass
+    # Fallback: simple regex
+    results = []
+    for m in re.finditer(
+        r'"concepto"\s*:\s*"([^"]+)".*?"monto"\s*:\s*([\d.]+).*?"tipo"\s*:\s*"([^"]+)"',
+        clean,
+        re.DOTALL,
+    ):
+        results.append({
+            "concepto": m.group(1),
+            "monto": float(m.group(2)),
+            "tipo": m.group(3),
+        })
+    return results
 
-        # Agregar la entrada del usuario al historial
-        chat_history.append({"role": "user", "content": request.prompt})
 
-        # Llamar a Ollama con el historial de la conversación
-        response = ollama.chat(
-            model="llama3.2:3b",
-            messages=chat_history
+# ── Endpoints ──────────────────────────────────────────────────────────────────
+@app.post("/conversation")
+def conversation(request: ConversationRequest):
+    global _chat_history
+    try:
+        # Append new messages from the frontend to the server-side history.
+        for msg in request.chat_history:
+            if msg.get("role") in ("user", "assistant") and msg not in _chat_history:
+                _chat_history.append(msg)
+
+        # Last user message for silent extraction
+        last_user = next(
+            (m["content"] for m in reversed(request.chat_history) if m["role"] == "user"),
+            "",
         )
 
-        # Extraer la respuesta del modelo
-        raw_response = response["message"]["content"]
+        # 1. Extract transactions (silent call)
+        transactions = _extract_transactions(last_user)
+        saved = []
+        for tx in transactions:
+            concepto = str(tx.get("concepto", "")).strip()
+            try:
+                monto = float(tx.get("monto", 0))
+            except (ValueError, TypeError):
+                continue
+            tipo_raw = str(tx.get("tipo", "gasto")).lower()
+            tipo = "ingreso" if "ingreso" in tipo_raw else "gasto"
+            if monto <= 0 or not concepto:
+                continue
+            categoria = clasificar(concepto)
+            fecha = datetime.now().strftime("%Y-%m-%d %H:%M")
+            insertar_transaccion(fecha, concepto, monto, categoria, tipo)
+            saved.append({
+                "concepto": concepto,
+                "monto": monto,
+                "categoria": categoria,
+                "tipo": tipo,
+            })
+            logger.info("Saved transaction: %s", saved[-1])
 
-        # Limpiar respuesta eliminando cualquier bloque <think>
-        cleaned_response = re.sub(r'<think>.*?</think>', '', raw_response, flags=re.DOTALL).strip()
+        # 2. LLM conversational reply
+        response_text = _llm(_chat_history)
+        _chat_history.append({"role": "assistant", "content": response_text})
 
-        # Agregar la respuesta al historial para mantener el contexto
-        chat_history.append({"role": "assistant", "content": cleaned_response})
+        return {"response": response_text, "transacciones_detectadas": saved}
 
-        return {"response": cleaned_response}
+    except Exception as exc:
+        logger.exception("Error in /conversation")
+        raise HTTPException(status_code=500, detail=str(exc))
 
-    except Exception as e:
-        error_message = f"Error al generar la respuesta: {str(e)}"
-        print(error_message)  # Log del error en la consola
-        raise HTTPException(status_code=500, detail=error_message)
 
-# Ejecutar el servidor con:
-# uvicorn server:app --host 0.0.0.0 --port 8000 --reload
+@app.get("/historial")
+def historial():
+    try:
+        rows = obtener_transacciones()
+        return {"transacciones": rows}
+    except Exception as exc:
+        logger.exception("Error in /historial")
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@app.post("/finalize")
+def finalize():
+    try:
+        rows = obtener_transacciones()
+        if not rows:
+            raise HTTPException(
+                status_code=400, detail="No hay transacciones guardadas para exportar."
+            )
+
+        df     = pd.DataFrame(rows)
+        
+        # 1. Generate filename with timestamp
+        now_str = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        filename = f"Reporte_Financiero_{now_str}.xlsx"
+        
+        # 2. Ensure directory
+        base_dir = os.path.dirname(__file__)
+        reports_dir = os.path.join(base_dir, "reportes")
+        os.makedirs(reports_dir, exist_ok=True)
+        filepath = os.path.join(reports_dir, filename)
+
+        # 3. Write to disk
+        with pd.ExcelWriter(filepath, engine="xlsxwriter") as writer:
+            df.to_excel(writer, index=False, sheet_name="Finanzas")
+            # Light formatting
+            wb  = writer.book
+            ws  = writer.sheets["Finanzas"]
+            hdr = wb.add_format({"bold": True, "bg_color": "#1e1b4b", "font_color": "#ffffff"})
+            for col_num, col_name in enumerate(df.columns):
+                ws.write(0, col_num, col_name, hdr)
+                ws.set_column(col_num, col_num, max(len(col_name) + 4, 16))
+
+        # 4. Save to DB
+        insertar_reporte(datetime.now().strftime("%Y-%m-%d %H:%M"), filename, filepath)
+
+        # 5. Return file
+        return FileResponse(
+            path=filepath, 
+            filename=filename, 
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.exception("Error in /finalize")
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@app.get("/reportes")
+def listar_reportes():
+    """List all generated reports for history."""
+    try:
+        return obtener_reportes()
+    except Exception as exc:
+        logger.exception("Error in /reportes")
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@app.get("/reportes/{report_id}/download")
+def descargar_reporte(report_id: int):
+    """Download an old report."""
+    try:
+        reports = obtener_reportes()
+        report = next((r for r in reports if r["id"] == report_id), None)
+        if not report:
+            raise HTTPException(status_code=404, detail="Reporte no encontrado")
+        
+        filepath = report["path"]
+        if not os.path.exists(filepath):
+             raise HTTPException(status_code=404, detail="Archivo físico no encontrado")
+
+        return FileResponse(
+            path=filepath,
+            filename=report["nombre"],
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.exception("Error in /reportes/download")
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@app.post("/predict")
+def predict(request: PredictRequest):
+    try:
+        result = predecir(
+            ingresos=request.ingresos,
+            hijos=request.hijos,
+            edad=request.edad,
+            educacion=request.educacion,
+        )
+        return result
+    except Exception as exc:
+        logger.exception("Error in /predict")
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@app.post("/metas")
+def metas_advice(request: MetasRequest):
+    try:
+        metas_str = "\n".join(
+            f"- {m['nombre']}: {m['valor']}%" for m in request.metas
+        )
+        messages = [
+            {
+                "role": "system",
+                "content": (
+                    "Eres un asesor financiero experto. "
+                    "El usuario te comparte su presupuesto deseado por categoría (en %). "
+                    "Da consejos breves y concretos sobre si la distribución es saludable, "
+                    "qué ajustaria y por qué. Responde en español, máximo 5 puntos breves."
+                ),
+            },
+            {
+                "role": "user",
+                "content": f"Mi distribución de presupuesto:\n{metas_str}",
+            },
+        ]
+        advice = _llm(messages)
+        return {"response": advice}
+    except Exception as exc:
+        logger.exception("Error in /metas")
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@app.delete("/reset")
+def reset_conversation():
+    global _chat_history
+    _chat_history = [{"role": "system", "content": _SYSTEM_PROMPT}]
+    return {"message": "Conversación reiniciada correctamente."}

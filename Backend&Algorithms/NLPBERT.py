@@ -47,7 +47,7 @@ def preprocess(texto):
         print("entidades detectadas: ", ent.text, "->", ent.label_)
     
     # Generar vector semántico BERT
-    texto_para_embedding = " ".join(texto) #se está utilizando el texto normalizado
+    texto_para_embedding = texto  # Usar el texto normalizado directamente
 
     vector_bert = bert_model.encode(texto_para_embedding)
 

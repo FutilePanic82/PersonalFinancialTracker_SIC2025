@@ -1,104 +1,98 @@
-import { Component } from '@angular/core';
-import { FormsModule } from '@angular/forms';
+import { Component, OnInit, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { FinanzasService } from '../core/services/finanzas.service';
+
+interface Meta {
+  nombre: string;
+  emoji: string;
+  valor: number;   // percentage 0-100
+  locked: boolean;
+}
 
 @Component({
   selector: 'app-metas-financieras',
   standalone: true,
-  imports: [FormsModule, CommonModule],
+  imports: [CommonModule, FormsModule],
   templateUrl: './metas-financieras.component.html',
-  styleUrls: ['./metas-financieras.component.css']
+  styleUrls: ['./metas-financieras.component.css'],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class MetasFinancierasComponent {
-  metas = [
-    { nombre: 'Alimentación 🍽️', valor: 20, bloqueado: true },
-    { nombre: 'Vivienda 🏡', valor: 20, bloqueado: true },
-    { nombre: 'Transporte 🚗', valor: 10, bloqueado: true },
-    { nombre: 'Salud 🏥', valor: 10, bloqueado: true },
-    { nombre: 'Educación 📚', valor: 5, bloqueado: true },
-    { nombre: 'Entretenimiento y ocio 🎮', valor: 10, bloqueado: true },
-    { nombre: 'Ropa y accesorios 👕', valor: 5, bloqueado: true },
-    { nombre: 'Ahorro personal 💰', valor: 10, bloqueado: true },
-    { nombre: 'Inversiones 📊', valor: 10, bloqueado: true },
+export class MetasFinancierasComponent implements OnInit {
+  metas: Meta[] = [
+    { nombre: 'Alimentación', emoji: '🍽️', valor: 20, locked: false },
+    { nombre: 'Vivienda', emoji: '🏡', valor: 20, locked: false },
+    { nombre: 'Transporte', emoji: '🚗', valor: 10, locked: false },
+    { nombre: 'Salud', emoji: '🏥', valor: 10, locked: false },
+    { nombre: 'Educación', emoji: '📚', valor: 5, locked: false },
+    { nombre: 'Entretenimiento', emoji: '🎮', valor: 10, locked: false },
+    { nombre: 'Ropa y accesorios', emoji: '👕', valor: 5, locked: false },
+    { nombre: 'Ahorro personal', emoji: '💰', valor: 10, locked: false },
+    { nombre: 'Inversiones', emoji: '📊', valor: 10, locked: false },
   ];
 
-  respuestaLLM: string = '';
+  llmAdvice = '';
+  loadingAdvice = false;
+  saved = false;
 
-  ajustarValores(metaEditada: any) {
-    let desbloqueadas = this.metas.filter(meta => !meta.bloqueado);
-    let total = this.metas.reduce((sum, meta) => sum + meta.valor, 0);
-    let exceso = total - 100;
-
-    if (exceso !== 0 && desbloqueadas.length > 1) {
-      let ajustePorMeta = Math.floor(exceso / (desbloqueadas.length - 1));
-
-      desbloqueadas.forEach(meta => {
-        if (meta !== metaEditada) {
-          meta.valor = Math.max(0, Math.min(100, meta.valor - ajustePorMeta));
-        }
-      });
-    }
-  }
-
-  isLastUnlocked(): boolean {
-    return this.metas.filter(meta => !meta.bloqueado).length === 1;
-  }
-
-  guardarMetas() {
-    this.normalizarValores(); // Normalizamos los valores antes de guardarlos
-    localStorage.setItem('metasFinancieras', JSON.stringify(this.metas));
-    this.enviarDatosALlm();
-  }
-
-  cargarMetas() {
-    const datosGuardados = localStorage.getItem('metasFinancieras');
-    if (datosGuardados) {
-      this.metas = JSON.parse(datosGuardados);
-    }
-  }
-
-  normalizarValores() {
-    let total = this.metas.reduce((sum, meta) => sum + meta.valor, 0);
-    if (total > 100) {
-      const factor = 100 / total;
-      this.metas.forEach(meta => meta.valor = Math.round(meta.valor * factor));
-    }
-  }
-
-  async enviarDatosALlm() {
-    const payload = {
-      prompt: `Mis metas financieras son las siguientes:
-      1. Alimentación 🍽️: ${this.metas[0].valor}%
-      2. Vivienda 🏡: ${this.metas[1].valor}%
-      3. Transporte 🚗: ${this.metas[2].valor}%
-      4. Salud 🏥: ${this.metas[3].valor}%
-      5. Educación 📚: ${this.metas[4].valor}%
-      6. Entretenimiento y ocio 🎮: ${this.metas[5].valor}%
-      7. Ropa y accesorios 👕: ${this.metas[6].valor}%
-      8. Tecnología y gadgets 📱: ${this.metas[7].valor}%
-      9. Viajes y vacaciones ✈️: ${this.metas[8].valor}%
-      10. Ahorro personal 💰: ${this.metas[9].valor}%
-      11. Inversiones 📊: ${this.metas[10].valor}%
-      12. Donaciones y caridad ❤️: ${this.metas[11].valor}%.
-
-      Los valores son porcentajes de distribución, y suman un total de 100%.`
-    };
-
-    try {
-      const response = await fetch('http://localhost:8000/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-
-      const data = await response.json();
-      this.respuestaLLM = data.response;
-    } catch (error) {
-      console.error('Error al enviar los datos al LLM:', error);
-    }
-  }
+  constructor(private svc: FinanzasService, private cdr: ChangeDetectorRef) { }
 
   ngOnInit() {
-    this.cargarMetas();
+    const stored = localStorage.getItem('metasFinancieras');
+    if (stored) this.metas = JSON.parse(stored);
+  }
+
+  get total(): number {
+    return this.metas.reduce((s, m) => s + m.valor, 0);
+  }
+  get totalOk(): boolean { return this.total === 100; }
+
+  onSliderChange(changed: Meta) {
+    const unlocked = this.metas.filter(m => !m.locked && m !== changed);
+    if (!unlocked.length) return;
+    const excess = this.total - 100;
+    if (excess === 0) return;
+    const perItem = excess / unlocked.length;
+    unlocked.forEach(m => {
+      m.valor = Math.max(0, Math.min(100, Math.round(m.valor - perItem)));
+    });
+  }
+
+  toggleLock(meta: Meta) { meta.locked = !meta.locked; }
+
+  save() {
+    this.normalise();
+    localStorage.setItem('metasFinancieras', JSON.stringify(this.metas));
+    this.saved = true;
+    setTimeout(() => {
+      this.saved = false;
+      this.cdr.markForCheck();
+    }, 2500);
+    this.requestAdvice();
+  }
+
+  private normalise() {
+    const t = this.total;
+    if (t > 0 && t !== 100) {
+      const factor = 100 / t;
+      this.metas.forEach(m => (m.valor = Math.round(m.valor * factor)));
+    }
+  }
+
+  private requestAdvice() {
+    this.loadingAdvice = true;
+    this.llmAdvice = '';
+    const payload = this.metas.map(m => ({ nombre: m.nombre, valor: m.valor }));
+    this.svc.metasAdvice(payload).subscribe({
+      next: r => {
+        this.llmAdvice = r.response;
+        this.loadingAdvice = false;
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.loadingAdvice = false;
+        this.cdr.markForCheck();
+      },
+    });
   }
 }

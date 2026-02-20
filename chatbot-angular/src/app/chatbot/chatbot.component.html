@@ -1,27 +1,70 @@
-<!-- Contenedor centrado -->
-<div class="contentCenter">
-  <h1>Personal Financial Tracker</h1>
-</div>
-
-<!-- Chatbot -->
-<div class="chat-container">
-  <div class="header">Chat</div>
-
-  <!-- Área de mensajes con auto-scroll -->
-  <div class="messages" #chatContainer>
-    <div *ngFor="let msg of messages" [ngClass]="{'user': msg.sender === 'User', 'bot': msg.sender === 'Bot'}">
-      <span class="msg-text">{{ msg.text }}</span>
+<div class="chat-wrapper">
+  <!-- Header -->
+  <div class="chat-header">
+    <div class="chat-header-left">
+      <div class="bot-avatar">🤖</div>
+      <div>
+        <div class="bot-name">FinBot</div>
+        <div class="bot-status"><span class="dot"></span> En línea</div>
+      </div>
+    </div>
+    <div class="chat-header-actions">
+      <button class="btn btn-secondary" id="btn-reset-chat" (click)="resetChat()" title="Reiniciar conversación">
+        🔄
+      </button>
+      <button class="btn btn-primary" id="btn-download-excel" (click)="downloadExcel()" [disabled]="!excelReady">
+        <span>⬇️</span> Descargar Excel
+      </button>
     </div>
   </div>
 
-  <!-- Área de entrada -->
-  <div class="input-container">
-    <input type="text" [(ngModel)]="userInput" (keyup.enter)="sendMessage()" placeholder="Escribe un mensaje..." />
-    <button (click)="sendMessage()">Enviar</button>
+  <!-- Messages -->
+  <div class="chat-messages" #chatContainer>
+    <div *ngFor="let msg of messages; trackBy: trackByMessage" class="msg-row" [class.msg-user]="msg.sender === 'user'"
+      [class.msg-bot]="msg.sender === 'bot'">
+
+      <div class="msg-avatar" *ngIf="msg.sender === 'bot'">🤖</div>
+
+      <div class="msg-content">
+        <div class="msg-bubble" [class.bubble-user]="msg.sender === 'user'" [class.bubble-bot]="msg.sender === 'bot'">
+          {{ msg.text }}
+        </div>
+
+        <!-- Transaction chips detected -->
+        <div class="tx-chips" *ngIf="msg.transactions && msg.transactions.length">
+          <div class="tx-chip" *ngFor="let tx of msg.transactions; trackBy: trackByTransaction"
+            [class.chip-income]="tx.tipo === 'ingreso'" [class.chip-expense]="tx.tipo === 'gasto'">
+            <span class="chip-icon">{{ tx.tipo === 'ingreso' ? '📈' : '📉' }}</span>
+            <span class="chip-concept">{{ tx.concepto }}</span>
+            <span class="chip-amount">${{ tx.monto | number:'1.2-2' }}</span>
+            <span class="chip-cat">{{ tx.categoria }}</span>
+          </div>
+        </div>
+
+        <div class="msg-time">{{ msg.time }}</div>
+      </div>
+
+      <div class="msg-avatar" *ngIf="msg.sender === 'user'">👤</div>
+    </div>
+
+    <!-- Typing indicator -->
+    <div class="msg-row msg-bot" *ngIf="loading">
+      <div class="msg-avatar">🤖</div>
+      <div class="msg-bubble bubble-bot typing-indicator">
+        <span></span><span></span><span></span>
+      </div>
+    </div>
   </div>
 
-  <!-- Botón para finalizar y descargar Excel, visible solo cuando excelDisponible es true -->
-  <div *ngIf="excelDisponible" class="finalize-container">
-    <button (click)="finalizeConversation()">Finalizar y Descargar Excel</button>
+  <!-- Input -->
+  <div class="chat-input-area">
+    <input id="chat-input" class="input-field chat-input" type="text" [(ngModel)]="userInput"
+      (keyup.enter)="sendMessage()" placeholder='Ej: "Gasté $300 en transporte" o "Gané $12,000 de sueldo"'
+      [disabled]="loading" />
+    <button class="btn btn-primary send-btn" id="btn-send-msg" (click)="sendMessage()"
+      [disabled]="loading || !userInput.trim()">
+      <span *ngIf="!loading">➤</span>
+      <span class="spinner" *ngIf="loading"></span>
+    </button>
   </div>
 </div>

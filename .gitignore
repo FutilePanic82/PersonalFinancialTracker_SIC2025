@@ -1,3 +1,49 @@
-"Backend&Algorithms/env1/" 
-Backend&Algorithms/env1/Lib/site-packages/torch/lib/dnnl.lib 
-Backend&Algorithms/env1/Lib/site-packages/torch/lib/torch_cpu.dll 
+# Entornos virtuales
+Backend&Algorithms/env1/
+**/venv/
+**/.venv/
+**/env/
+
+# Python cache
+**/__pycache__/
+**/*.py[cod]
+**/*.pyo
+**/*.pyd
+*.egg-info/
+
+# Conda env (si se crea localmente)
+**/financebot/
+
+# Angular build
+chatbot-angular/dist/
+chatbot-angular/node_modules/
+
+# IDEs
+.vscode/
+.idea/
+*.suo
+*.user
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# SQLite database (generated at runtime)
+*.db
+Backend&Algorithms/finanzas.db
+Backend&Algorithms/run_synthetic_tests.py
+
+# Generated/temporary files
+.pids
+finanzas.xlsx
+headers.txt
+Backend&Algorithms/metrics_summary.png
+Backend&Algorithms/reportes/
+
+# Gemini agent
+.gemini/
+Backend

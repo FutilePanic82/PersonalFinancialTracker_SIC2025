@@ -1,82 +1,146 @@
+import {
+  AfterViewChecked,
+  Component,
+  ElementRef,
+  ViewChild,
+  ChangeDetectionStrategy,
+  ChangeDetectorRef,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Component, AfterViewChecked, ElementRef, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ChatbotService } from '../services/deepseek.service';
+import { FinanzasService, Transaccion } from '../core/services/finanzas.service';
+
+interface ChatMessage {
+  sender: 'user' | 'bot';
+  text: string;
+  time: string;
+  transactions?: Transaccion[];
+}
 
 @Component({
   selector: 'app-chatbot',
   standalone: true,
   imports: [CommonModule, FormsModule],
   templateUrl: './chatbot.component.html',
-  styleUrls: ['./chatbot.component.css']
+  styleUrls: ['./chatbot.component.css'],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ChatbotComponent implements AfterViewChecked {
-  userInput: string = '';
-  messages: { sender: string; text: string }[] = [];
+  messages: ChatMessage[] = [
+    {
+      sender: 'bot',
+      text: '¡Hola! 👋 Soy tu asistente financiero. Cuéntame tus ingresos y gastos de forma natural, como: "Gasté $500 en comida" o "Recibí $15,000 de sueldo". Iré registrándolos automáticamente.',
+      time: this.now(),
+    },
+  ];
   chatHistory: any[] = [];
-  excelDisponible: boolean = false;
+  userInput = '';
+  loading = false;
+  excelReady = false;
 
-  @ViewChild('chatContainer') private chatContainer!: ElementRef;
+  @ViewChild('chatContainer') private chatRef!: ElementRef;
 
-  constructor(private chatbotService: ChatbotService) {}
+  constructor(private svc: FinanzasService, private cdr: ChangeDetectorRef) { }
 
-  ngAfterViewChecked(): void {
-    this.scrollToBottom();
+  ngAfterViewChecked() {
+    this.scrollBottom();
   }
 
-  private scrollToBottom(): void {
+  private scrollBottom() {
     try {
-      this.chatContainer.nativeElement.scrollTop = this.chatContainer.nativeElement.scrollHeight;
-    } catch (err) {
-      console.error(err);
-    }
+      this.chatRef.nativeElement.scrollTop =
+        this.chatRef.nativeElement.scrollHeight;
+    } catch (_) { }
   }
 
-  sendMessage(): void {
-    if (!this.userInput.trim()) return;
-
-    const userMessage = this.userInput;
-    this.userInput = ''; // Limpiar el input inmediatamente
-
-    // Agregar el mensaje del usuario con sender 'User'
-    this.messages.push({ sender: 'User', text: userMessage });
-    this.chatHistory.push({ role: 'user', content: userMessage });
-
-    this.chatbotService.sendConversation(this.chatHistory).subscribe({
-      next: (response) => {
-        if (response && response.response) {
-          this.messages.push({ sender: 'Bot', text: response.response });
-          this.chatHistory.push({ role: 'assistant', content: response.response });
-          // Si la respuesta contiene la palabra "descargalo", se habilita la descarga del Excel
-          if (response.response.toLowerCase().includes('descargalo')) {
-            this.excelDisponible = true;
-          }
-        }
-      },
-      error: (error) => {
-        console.error('Error en la comunicación con el backend:', error);
-        this.messages.push({ sender: 'Bot', text: 'Hubo un error, intenta nuevamente.' });
-      }
+  private now(): string {
+    return new Date().toLocaleTimeString('es-MX', {
+      hour: '2-digit',
+      minute: '2-digit',
     });
   }
 
-  finalizeConversation(): void {
-    this.chatbotService.finalizeConversation(this.chatHistory).subscribe({
-      next: (response) => {
-        const blob = new Blob([response], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-        const url = window.URL.createObjectURL(blob);
+  sendMessage() {
+    const text = this.userInput.trim();
+    if (!text || this.loading) return;
+    this.userInput = '';
+
+    this.messages.push({ sender: 'user', text, time: this.now() });
+    this.chatHistory.push({ role: 'user', content: text });
+    this.loading = true;
+
+    // Only send the new user message; the backend keeps its own full history
+    const newMessage = [{ role: 'user', content: text }];
+
+    this.svc.sendConversation(newMessage).subscribe({
+      next: (res) => {
+        this.loading = false;
+        const msg: ChatMessage = {
+          sender: 'bot',
+          text: res.response,
+          time: this.now(),
+        };
+        if (res.transacciones_detectadas?.length) {
+          msg.transactions = res.transacciones_detectadas;
+          this.excelReady = true;
+        }
+        this.messages.push(msg);
+        this.chatHistory.push({ role: 'assistant', content: res.response });
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.loading = false;
+        this.messages.push({
+          sender: 'bot',
+          text: '⚠️ Error al conectar con el servidor. Verifica que el backend esté iniciado.',
+          time: this.now(),
+        });
+        this.cdr.markForCheck();
+      },
+    });
+  }
+
+  downloadExcel() {
+    this.svc.finalize().subscribe({
+      next: (blob) => {
+        const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = 'gastos_ingresos.xlsx';
-        document.body.appendChild(a);
+        a.download = 'finanzas.xlsx';
         a.click();
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
+        URL.revokeObjectURL(url);
+        this.cdr.markForCheck();
       },
-      error: (error) => {
-        console.error('Error al finalizar la conversación y descargar el Excel:', error);
-        this.messages.push({ sender: 'Bot', text: 'Error al generar el archivo Excel.' });
-      }
+      error: () => {
+        this.messages.push({
+          sender: 'bot',
+          text: '⚠️ No se pudo generar el Excel. Asegúrate de haber registrado al menos una transacción.',
+          time: this.now(),
+        });
+        this.cdr.markForCheck();
+      },
     });
+  }
+
+  resetChat() {
+    this.svc.resetChat().subscribe();
+    this.chatHistory = [];
+    this.excelReady = false;
+    this.messages = [
+      {
+        sender: 'bot',
+        text: '🔄 Conversación reiniciada. ¡Listo para registrar nuevas transacciones!',
+        time: this.now(),
+      },
+    ];
+    this.cdr.markForCheck();
+  }
+
+  trackByMessage(index: number, msg: ChatMessage): number {
+    return index;
+  }
+
+  trackByTransaction(index: number, tx: Transaccion): number {
+    return index;
   }
 }

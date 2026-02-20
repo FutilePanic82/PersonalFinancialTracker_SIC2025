@@ -1,60 +1,112 @@
-import { Component } from '@angular/core';
+import { Component, OnInit, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { FinanzasService, Transaccion, PredictRequest, PredictResponse } from '../core/services/finanzas.service';
+
+interface CategoryStat {
+  categoria: string;
+  total: number;
+  pct: number;
+}
 
 @Component({
   selector: 'app-analisis-gastos',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule],
   templateUrl: './analisis-gastos.component.html',
-  styleUrls: ['./analisis-gastos.component.css']
+  styleUrls: ['./analisis-gastos.component.css'],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class AnalisisGastosComponent {
-  gastos = [
-    { categoria: 'Alquiler', monto: 2000 },
-    { categoria: 'Servicios públicos (agua + luz + internet)', monto: 1000 },
-    { categoria: 'Comida', monto: 2000 },
-    { categoria: 'Transporte', monto: 300 },
-    { categoria: 'Ocio y entretenimiento', monto: 500 },
-    { categoria: 'Telecomunicaciones', monto: 1500 },
-    { categoria: 'Salud y belleza', monto: 200 },
-    { categoria: 'Ropa y accesorios', monto: 300 }
-  ];
+export class AnalisisGastosComponent implements OnInit {
+  /* ── Transaction summary from DB ── */
+  txList: Transaccion[] = [];
+  loadingTx = true;
+  categoryStats: CategoryStat[] = [];
+  totalGastos = 0;
+  totalIngresos = 0;
 
-  ingresos = [
-    { categoria: 'Ingreso fijo', monto: 15000 },
-    { categoria: 'Ingreso extra', monto: 2000 }
-  ];
+  /* ── Polynomial regression form ── */
+  form: PredictRequest = { ingresos: 15000, hijos: 0, edad: 28, educacion: 2 };
+  prediction: PredictResponse | null = null;
+  loadingPred = false;
+  predError = '';
 
-  totalGasto: number = 0;
-  totalIngreso: number = 0;
-  categoriaMayorGasto: string = '';
-  consejo: string = '';
+  educacionLabels = ['Primaria', 'Secundaria', 'Universidad', 'Posgrado'];
+  adviceText = '';
 
-  constructor() {
-    this.analizarFinanzas();
+  constructor(private svc: FinanzasService, private cdr: ChangeDetectorRef) { }
+
+  ngOnInit() { this.loadTransactions(); }
+
+  loadTransactions() {
+    this.svc.getHistorial().subscribe({
+      next: r => {
+        this.txList = r.transacciones;
+        this.computeStats();
+        this.loadingTx = false;
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.loadingTx = false;
+        this.cdr.markForCheck();
+      },
+    });
   }
 
-  analizarFinanzas() {
-    this.totalGasto = this.gastos.reduce((acc, gasto) => acc + gasto.monto, 0);
-    this.totalIngreso = this.ingresos.reduce((acc, ingreso) => acc + ingreso.monto, 0);
+  computeStats() {
+    this.totalGastos = this.txList.filter(t => t.tipo === 'gasto').reduce((s, t) => s + t.monto, 0);
+    this.totalIngresos = this.txList.filter(t => t.tipo === 'ingreso').reduce((s, t) => s + t.monto, 0);
 
-    const mayorGasto = this.gastos.reduce((max, gasto) => gasto.monto > max.monto ? gasto : max, this.gastos[0]);
-    this.categoriaMayorGasto = mayorGasto.categoria;
+    const map = new Map<string, number>();
+    this.txList.filter(t => t.tipo === 'gasto').forEach(t => {
+      map.set(t.categoria, (map.get(t.categoria) ?? 0) + t.monto);
+    });
 
-    this.generarConsejo();
+    this.categoryStats = Array.from(map.entries())
+      .map(([categoria, total]) => ({
+        categoria,
+        total,
+        pct: this.totalGastos > 0 ? Math.round((total / this.totalGastos) * 100) : 0,
+      }))
+      .sort((a, b) => b.total - a.total);
   }
 
-  generarConsejo() {
-    const balance = this.totalIngreso - this.totalGasto;
+  runPrediction() {
+    this.loadingPred = true;
+    this.predError = '';
+    this.prediction = null;
+    this.adviceText = '';
 
-    if (balance < 0) {
-      this.consejo = 'Tus gastos superan tus ingresos. Revisa tus gastos fijos y reduce lo innecesario.';
-    } else if (this.categoriaMayorGasto === 'Supermercado') {
-      this.consejo = 'Intenta optimizar tus compras en el supermercado aprovechando ofertas y evitando compras impulsivas.';
-    } else if (this.totalGasto > this.totalIngreso * 0.8) {
-      this.consejo = 'Estás gastando más del 80% de tus ingresos. Considera ahorrar una mayor proporción.';
-    } else {
-      this.consejo = 'Vas bien con tus finanzas. Considera crear un fondo de emergencia o invertir parte del ingreso.';
-    }
+    this.svc.predict(this.form).subscribe({
+      next: res => {
+        this.prediction = res;
+        this.loadingPred = false;
+        this.generateAdvice(res);
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.predError = 'Error al obtener la predicción. Verifica que el servidor esté activo.';
+        this.loadingPred = false;
+        this.cdr.markForCheck();
+      },
+    });
+  }
+
+  private generateAdvice(res: PredictResponse) {
+    const savingsPct = this.form.ingresos > 0
+      ? Math.round((res.ahorro_estimado / this.form.ingresos) * 100)
+      : 0;
+
+    if (savingsPct >= 20)
+      this.adviceText = `✅ Excelente perfil financiero. Ahorras el ${savingsPct}% de tus ingresos. Considera invertir parte del excedente.`;
+    else if (savingsPct >= 10)
+      this.adviceText = `🟡 Ahorro moderado (${savingsPct}%). Intenta reducir gastos no esenciales para llegar al 20% recomendado.`;
+    else
+      this.adviceText = `🔴 Ahorro bajo (${savingsPct}%). Tus gastos consumen la mayor parte de tus ingresos. Revisa categorías de mayor gasto.`;
+  }
+
+  get spendingRatio(): number {
+    if (!this.prediction || this.form.ingresos === 0) return 0;
+    return Math.round((this.prediction.gasto_predicho / this.form.ingresos) * 100);
   }
 }

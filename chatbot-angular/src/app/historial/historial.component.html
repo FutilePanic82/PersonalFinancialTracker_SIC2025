@@ -1,10 +1,128 @@
-<div class="historial-title">Historial de Archivos</div>
+<div class="section-header flex-between">
+  <div>
+    <h2>📋 Historial de Transacciones</h2>
+    <p>Registro completo de todos tus ingresos y gastos guardados</p>
+  </div>
+  <button class="btn btn-primary" id="btn-hist-excel" (click)="downloadExcel()">
+    ⬇️ Exportar Excel
+  </button>
+</div>
 
-<div class="historial-container">
-  <div *ngFor="let archivo of historialArchivos" class="historial-card">
-    <h3>{{ archivo.nombre }}</h3>
-    <p><strong>Fecha:</strong> {{ archivo.fecha }}</p>
-    <p><strong>Tamaño:</strong> {{ archivo.tamano }}</p>
-    <button class="descargar-btn">Descargar</button>
+<!-- Stats row -->
+<div class="grid-3 mb-4">
+  <div class="card stat-card">
+    <div class="stat-icon green">📈</div>
+    <div>
+      <div class="stat-value">${{ totalIngresos | number:'1.2-2' }}</div>
+      <div class="stat-label">Total Ingresos</div>
+    </div>
+  </div>
+  <div class="card stat-card">
+    <div class="stat-icon red">📉</div>
+    <div>
+      <div class="stat-value">${{ totalGastos | number:'1.2-2' }}</div>
+      <div class="stat-label">Total Gastos</div>
+    </div>
+  </div>
+  <div class="card stat-card">
+    <div class="stat-icon" [class.green]="balance >= 0" [class.red]="balance < 0">💰</div>
+    <div>
+      <div class="stat-value" [style.color]="balance >= 0 ? 'var(--success)' : 'var(--danger)'">
+        ${{ balance | number:'1.2-2' }}
+      </div>
+      <div class="stat-label">Balance Neto</div>
+    </div>
+  </div>
+</div>
+
+
+<!-- Reports Section -->
+<div class="card mb-4" *ngIf="reports.length > 0">
+  <div style="padding: 16px; border-bottom: 1px solid var(--border);">
+    <h3
+      style="font-size: 16px; font-weight: 600; display:flex; align-items:center; gap:8px; margin:0; color:var(--text)">
+      📂 Reportes Generados
+      <span class="badge" style="background:rgba(124, 58, 237, 0.2); color:var(--accent)">{{ reports.length }}</span>
+    </h3>
+  </div>
+  <div style="max-height: 250px; overflow-y: auto;">
+    <div *ngFor="let r of reports"
+      style="display:flex; justify-content:space-between; align-items:center; padding:12px 16px; border-bottom:1px solid var(--border)">
+      <div>
+        <div style="font-weight:500; font-size:14px; color:var(--text); margin-bottom:2px">{{ r.nombre }}</div>
+        <div style="font-size:11px; color:var(--text-muted)">{{ r.fecha }}</div>
+      </div>
+      <button class="btn btn-secondary" style="padding:6px 12px; font-size:11px" (click)="downloadReport(r)">
+        ⬇️ Descargar
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Filters -->
+<div class="card filters-bar mb-4">
+  <input id="hist-search" class="input-field" type="text" [(ngModel)]="searchTerm" (input)="applyFilter()"
+    placeholder="🔍 Buscar por concepto o categoría…" style="flex:1; min-width:200px" />
+  <div class="filter-tabs">
+    <button id="filter-todos" class="tab-btn" [class.active]="filterTipo==='todos'"
+      (click)="filterTipo='todos';   applyFilter()">Todos</button>
+    <button id="filter-ingresos" class="tab-btn" [class.active]="filterTipo==='ingreso'"
+      (click)="filterTipo='ingreso'; applyFilter()">Ingresos</button>
+    <button id="filter-gastos" class="tab-btn" [class.active]="filterTipo==='gasto'"
+      (click)="filterTipo='gasto';   applyFilter()">Gastos</button>
+  </div>
+</div>
+
+<!-- Loading / Error -->
+<div *ngIf="loading" class="state-center">
+  <div class="spinner" style="width:36px;height:36px;border-width:4px"></div>
+  <p class="text-muted mt-4">Cargando historial…</p>
+</div>
+
+<div *ngIf="error && !loading" class="card state-center error-card">
+  <div style="font-size:40px">⚠️</div>
+  <p>{{ error }}</p>
+  <button class="btn btn-primary mt-4" (click)="load()">Reintentar</button>
+</div>
+
+<!-- Table -->
+<div class="card table-card" *ngIf="!loading && !error">
+  <div *ngIf="filtered.length === 0" class="state-center" style="padding:48px">
+    <div style="font-size:48px">📭</div>
+    <p class="text-muted mt-4">No se encontraron transacciones.<br>Empieza a chatear para registrarlas.</p>
+  </div>
+
+  <div class="table-scroll" *ngIf="filtered.length > 0">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Fecha</th>
+          <th>Concepto</th>
+          <th>Categoría</th>
+          <th>Tipo</th>
+          <th style="text-align:right">Monto</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let tx of filtered; let i = index">
+          <td class="text-muted text-small">{{ tx.id }}</td>
+          <td class="text-small text-muted">{{ tx.fecha }}</td>
+          <td>{{ tx.concepto | titlecase }}</td>
+          <td>
+            <span class="cat-badge">{{ tx.categoria }}</span>
+          </td>
+          <td>
+            <span class="badge" [class.badge-income]="tx.tipo==='ingreso'" [class.badge-expense]="tx.tipo==='gasto'">
+              {{ tx.tipo === 'ingreso' ? '📈 Ingreso' : '📉 Gasto' }}
+            </span>
+          </td>
+          <td style="text-align:right; font-weight:600"
+            [style.color]="tx.tipo==='ingreso' ? 'var(--success)' : 'var(--danger)'">
+            ${{ tx.monto | number:'1.2-2' }}
+          </td>
+        </tr>
+      </tbody>
+    </table>
   </div>
 </div>

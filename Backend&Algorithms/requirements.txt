@@ -1,0 +1,15 @@
+fastapi
+uvicorn[standard]
+pydantic
+ollama
+pandas
+numpy
+joblib
+scikit-learn
+torch
+transformers
+xlsxwriter
+openpyxl
+tqdm
+matplotlib
+seaborn

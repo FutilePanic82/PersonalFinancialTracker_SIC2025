@@ -1,12 +1,94 @@
-<div class="contact-title">Información de Contacto</div>
+<div class="contact-page">
+  <div class="section-header" style="text-align:center">
+    <h2>📩 Contacto</h2>
+    <p>¿Tienes dudas o sugerencias sobre el proyecto? Escríbenos.</p>
+  </div>
 
-<div class="contact-container">
-  <div *ngFor="let contacto of contactos" class="contact-card">
-    <img [src]="contacto.foto" alt="Foto de {{contacto.nombre}}" class="contact-photo">
-    <div class="contact-info">
-      <h3>{{ contacto.nombre }}</h3>
-      <p><strong>Email:</strong> {{ contacto.email }}</p>
-      <p><strong>Teléfono:</strong> {{ contacto.telefono }}</p>
+  <div class="contact-layout">
+    <!-- Info cards -->
+    <div class="info-column">
+      <div class="card info-card">
+        <div class="info-icon">🚀</div>
+        <div class="info-title">Proyecto SIC 2025</div>
+        <p class="text-muted text-small">
+          Personal Financial Tracker — Chatbot de finanzas personales con IA,
+          desarrollado como proyecto final del curso Samsung Innovation Campus 2025.
+        </p>
+      </div>
+
+      <div class="card info-card">
+        <div class="info-icon">🤖</div>
+        <div class="info-title">Tecnologías</div>
+        <div class="tech-tags">
+          <span class="tag">FastAPI</span>
+          <span class="tag">Ollama LLaMA</span>
+          <span class="tag">DistilBERT</span>
+          <span class="tag">SVM</span>
+          <span class="tag">Regresión Polinómica</span>
+          <span class="tag">Angular</span>
+          <span class="tag">SQLite</span>
+        </div>
+      </div>
+
+      <div class="card info-card">
+        <div class="info-icon">📦</div>
+        <div class="info-title">Repositorio</div>
+        <p class="text-muted text-small">
+          Código fuente disponible en GitHub:
+        </p>
+        <a href="https://github.com/FutilePanic82/PersonalFinancialTracker_SIC2025" target="_blank" id="link-repo"
+          class="repo-link">
+          🔗 Ver en GitHub
+        </a>
+      </div>
+    </div>
+
+    <!-- Form -->
+    <div class="card form-card" *ngIf="!submitted">
+      <h3 class="form-title">Envianos un mensaje</h3>
+
+      <div class="form-grid">
+        <div class="field-group">
+          <label class="field-label" for="ct-nombre">👤 Nombre</label>
+          <input id="ct-nombre" class="input-field" type="text" [(ngModel)]="form.nombre"
+            placeholder="Tu nombre completo" />
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="ct-email">📧 Correo electrónico</label>
+          <input id="ct-email" class="input-field" type="email" [(ngModel)]="form.email" placeholder="tu@correo.com" />
+        </div>
+      </div>
+
+      <div class="field-group mt-4">
+        <label class="field-label" for="ct-asunto">📌 Asunto</label>
+        <input id="ct-asunto" class="input-field" type="text" [(ngModel)]="form.asunto"
+          placeholder="¿De qué se trata?" />
+      </div>
+
+      <div class="field-group mt-4">
+        <label class="field-label" for="ct-mensaje">💬 Mensaje</label>
+        <textarea id="ct-mensaje" class="input-field msg-area" [(ngModel)]="form.mensaje"
+          placeholder="Escribe tu mensaje aquí…" rows="5"></textarea>
+      </div>
+
+      <button id="btn-send-contact" class="btn btn-primary w-full mt-4" (click)="send()"
+        [disabled]="sending || !form.nombre || !form.email || !form.mensaje">
+        <span class="spinner" *ngIf="sending" style="width:16px;height:16px;border-width:2px"></span>
+        <span *ngIf="!sending">✉️ Enviar Mensaje</span>
+        <span *ngIf="sending">Enviando…</span>
+      </button>
+    </div>
+
+    <!-- Success state -->
+    <div class="card success-card" *ngIf="submitted">
+      <div style="font-size:64px">🎉</div>
+      <h3>¡Mensaje enviado!</h3>
+      <p class="text-muted">
+        Gracias por contactarnos. Te responderemos a la brevedad.
+      </p>
+      <button id="btn-new-msg" class="btn btn-secondary mt-4" (click)="reset()">
+        ✉️ Enviar otro mensaje
+      </button>
     </div>
   </div>
 </div>

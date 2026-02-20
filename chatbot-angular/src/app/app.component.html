@@ -1,24 +1,9 @@
-<!-- Logo en la esquina superior derecha -->
-<img src="../assets/samsung5.png" alt="Logo" class="logo">
+<!-- Layout Components -->
+<app-sidebar [isOpen]="isSidebarOpen" (close)="closeSidebar()"></app-sidebar>
 
-<!-- Header con botón para abrir el sidebar -->
-<header>
-  <button (click)="toggleSidebar()">☰</button>
-</header>
+<app-topbar (toggle)="toggleSidebar()"></app-topbar>
 
-<!-- Sidebar -->
-<div class="sidebar" [class.open]="isSidebarOpen">
-  <button class="close-btn" (click)="toggleSidebar()">×</button>
-  <ul>
-    <li><a routerLink="/" routerLinkActive="active" (click)="closeSidebar()">Inicio</a></li>
-    <li><a routerLink="/metas" routerLinkActive="active" (click)="closeSidebar()">Metas financieras</a></li>
-    <li><a routerLink="/analisis" routerLinkActive="active" (click)="closeSidebar()">Analisis de gastos</a></li>
-    <li><a routerLink="/historial" routerLinkActive="active" (click)="closeSidebar()">Historial</a></li>
-    <li><a routerLink="/contacto" routerLinkActive="active" (click)="closeSidebar()">Contacto</a></li>
-  </ul>
-</div>
-
-<!-- Contenido de las rutas -->
-<div class="content" [class.shift]="isSidebarOpen">
+<!-- Page content -->
+<div class="page-content" [class.shifted]="isSidebarOpen">
   <router-outlet></router-outlet>
 </div>

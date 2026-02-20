@@ -1,22 +1,176 @@
-<div class="contentCenter">Análisis de Gastos</div>
+<div class="section-header">
+  <h2>📊 Análisis de Gastos</h2>
+  <p>Estadísticas reales de tus transacciones y predicción de gasto con IA</p>
+</div>
 
-<div class="analisis-container">
-  <div class="gastos-list">
-    <h3>Gastos por categoría</h3>
-    <ul>
-      <li *ngFor="let gasto of gastos">
-        {{ gasto.categoria }}: <span class="monto">${{ gasto.monto }}</span>
-      </li>
-    </ul>
+<!-- ─── Current transaction stats ─────────────────────── -->
+<div class="grid-2 mb-6">
+  <!-- Category breakdown -->
+  <div class="card panel">
+    <div class="panel-title">🗂️ Gastos por Categoría</div>
+
+    <div *ngIf="loadingTx" class="center-msg">
+      <div class="spinner"></div>
+    </div>
+
+    <div *ngIf="!loadingTx && categoryStats.length === 0" class="center-msg text-muted">
+      Sin datos aún. Registra transacciones en el chatbot.
+    </div>
+
+    <div class="cat-list" *ngIf="!loadingTx && categoryStats.length > 0">
+      <div class="cat-row" *ngFor="let s of categoryStats">
+        <div class="cat-info">
+          <span class="cat-name">{{ s.categoria || 'Sin Categoría' }}</span>
+          <span class="cat-amount">${{ s.total | number:'1.2-2' }}</span>
+        </div>
+        <div class="progress-bar-track">
+          <div class="progress-bar-fill" [style.width.%]="s.pct"></div>
+        </div>
+        <span class="cat-pct">{{ s.pct }}%</span>
+      </div>
+    </div>
   </div>
 
-  <div class="resumen">
-    <p><strong>Total Gastado:</strong> <span class="monto">${{ totalGasto }}</span></p>
-    <p><strong>Categoría con mayor gasto:</strong> <span class="categoria">{{ categoriaMayorGasto }}</span></p>
+  <!-- Balance summary -->
+  <div style="display:flex;flex-direction:column;gap:16px">
+    <div class="card stat-card">
+      <div class="stat-icon green">📈</div>
+      <div>
+        <div class="stat-value">${{ totalIngresos | number:'1.2-2' }}</div>
+        <div class="stat-label">Total Ingresos Registrados</div>
+      </div>
+    </div>
+    <div class="card stat-card">
+      <div class="stat-icon red">📉</div>
+      <div>
+        <div class="stat-value">${{ totalGastos | number:'1.2-2' }}</div>
+        <div class="stat-label">Total Gastos Registrados</div>
+      </div>
+    </div>
+    <div class="card stat-card">
+      <div class="stat-icon" [class.green]="totalIngresos-totalGastos>=0" [class.red]="totalIngresos-totalGastos<0">💰
+      </div>
+      <div>
+        <div class="stat-value" [style.color]="totalIngresos-totalGastos>=0?'var(--success)':'var(--danger)'">
+          ${{ totalIngresos - totalGastos | number:'1.2-2' }}
+        </div>
+        <div class="stat-label">Balance Actual</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── Polynomial regression predictor ──────────────── -->
+<div class="card panel">
+  <div class="panel-title">🤖 Predictor de Gasto Mensual (Regresión Polinomial)</div>
+  <p class="text-muted text-small mb-4">
+    Introduce tu perfil y el modelo de IA estimará tu gasto mensual basándose en patrones estadísticos de miles de
+    usuarios.
+  </p>
+
+  <div class="pred-form">
+    <div class="field-group">
+      <label class="field-label" for="pred-ingresos">💵 Ingresos Mensuales ($)</label>
+      <input id="pred-ingresos" class="input-field" type="number" [(ngModel)]="form.ingresos" min="0" step="500" />
+    </div>
+    <div class="field-group">
+      <label class="field-label" for="pred-edad">🎂 Edad</label>
+      <input id="pred-edad" class="input-field" type="number" [(ngModel)]="form.edad" min="18" max="99" />
+    </div>
+    <div class="field-group">
+      <label class="field-label" for="pred-hijos">👶 Número de Hijos</label>
+      <input id="pred-hijos" class="input-field" type="number" [(ngModel)]="form.hijos" min="0" max="20" />
+    </div>
+    <div class="field-group">
+      <label class="field-label" for="pred-educacion">🎓 Nivel Educativo</label>
+      <select id="pred-educacion" class="input-field" [(ngModel)]="form.educacion">
+        <option [value]="0">Primaria</option>
+        <option [value]="1">Secundaria</option>
+        <option [value]="2">Universidad</option>
+        <option [value]="3">Posgrado</option>
+      </select>
+    </div>
   </div>
 
-  <div class="consejo">
-    <h3>Consejo Financiero</h3>
-    <p>{{ consejo }}</p>
+  <button id="btn-predict" class="btn btn-primary mt-4" (click)="runPrediction()" [disabled]="loadingPred">
+    <span class="spinner" *ngIf="loadingPred" style="width:16px;height:16px;border-width:2px"></span>
+    <span *ngIf="!loadingPred">🔮 Predecir Gasto</span>
+    <span *ngIf="loadingPred">Calculando…</span>
+  </button>
+
+  <p class="text-muted text-small mt-4" *ngIf="predError" style="color:var(--danger)">{{ predError }}</p>
+
+  <!-- Results -->
+  <div class="pred-results" *ngIf="prediction">
+    <div class="pred-grid">
+      <div class="pred-card pred-expense">
+        <div class="pred-icon">📉</div>
+        <div class="pred-val">${{ prediction.gasto_predicho | number:'1.2-2' }}</div>
+        <div class="pred-lbl">Gasto Predicho</div>
+      </div>
+      <div class="pred-card pred-saving">
+        <div class="pred-icon">💰</div>
+        <div class="pred-val">${{ prediction.ahorro_estimado | number:'1.2-2' }}</div>
+        <div class="pred-lbl">Ahorro Estimado</div>
+      </div>
+      <div class="pred-card pred-r2">
+        <div class="pred-icon">📐</div>
+        <div class="pred-val">{{ (prediction.r2 * 100) | number:'1.1-1' }}%</div>
+        <div class="pred-lbl">Precisión del modelo (R²)</div>
+      </div>
+    </div>
+
+    <!-- Enhanced Projection Visualization -->
+    <div class="mt-6 p-4 rounded" style="background:rgba(255,255,255,0.03)">
+      <h4 class="text-small text-muted transform uppercase mb-4" style="letter-spacing:1px; font-weight:600">
+        📚 Proyección Visual
+      </h4>
+
+      <!-- Income Bar -->
+      <div class="mb-4">
+        <div class="flex-between text-small mb-1">
+          <span class="text-muted">Ingresos Totales</span>
+          <span>${{ form.ingresos | number:'1.0-0' }}</span>
+        </div>
+        <div class="progress-bar-track" style="background:rgba(255,255,255,0.1)">
+          <div class="progress-bar-fill" style="width:100%; background:var(--text-muted); opacity:0.5"></div>
+        </div>
+      </div>
+
+      <!-- Expense Bar -->
+      <div class="mb-4">
+        <div class="flex-between text-small mb-1">
+          <span class="text-muted">Gasto Estimado</span>
+          <span [style.color]="spendingRatio > 100 ? 'var(--danger)' : 'inherit'">
+            ${{ prediction.gasto_predicho | number:'1.0-0' }}
+          </span>
+        </div>
+        <div class="progress-bar-track" style="background:rgba(255,255,255,0.1)">
+          <div class="progress-bar-fill" [style.width.%]="spendingRatio > 100 ? 100 : spendingRatio"
+            [style.background]="spendingRatio > 80 ? 'var(--danger)' : 'var(--accent-grd)'">
+          </div>
+        </div>
+        <div class="text-small text-muted mt-1" style="font-size:11px">
+          Tus gastos representan el <strong>{{ spendingRatio }}%</strong> de tus ingresos.
+        </div>
+      </div>
+
+      <!-- Saving Bar -->
+      <div *ngIf="prediction.ahorro_estimado > 0">
+        <div class="flex-between text-small mb-1">
+          <span style="color:var(--success)">Ahorro Potencial</span>
+          <span style="color:var(--success)">${{ prediction.ahorro_estimado | number:'1.0-0' }}</span>
+        </div>
+        <div class="progress-bar-track" style="background:rgba(255,255,255,0.1)">
+          <div class="progress-bar-fill"
+            [style.width.%]="form.ingresos > 0 ? (prediction.ahorro_estimado / form.ingresos) * 100 : 0"
+            style="background:var(--success)">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Advice -->
+    <div class="advice-box mt-4" *ngIf="adviceText">{{ adviceText }}</div>
   </div>
 </div>

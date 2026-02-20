@@ -1,0 +1,57 @@
+/* ── Topbar Component Styles ──────────────────────── */
+:host {
+    display: block;
+    width: 100%;
+}
+
+.topbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 60px;
+    background: rgba(6, 6, 18, 0.85);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    z-index: 900;
+}
+
+.hamburger-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    width: 38px;
+    height: 38px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    border-radius: 8px;
+    transition: background var(--transition);
+}
+
+.hamburger-btn:hover {
+    background: var(--bg-card);
+}
+
+.hamburger-btn span {
+    display: block;
+    width: 22px;
+    height: 2px;
+    background: var(--text);
+    border-radius: 2px;
+    transition: all var(--transition);
+}
+
+.topbar-title {
+    margin-left: 16px;
+    font-size: 16px;
+    font-weight: 600;
+    background: var(--accent-grd);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}

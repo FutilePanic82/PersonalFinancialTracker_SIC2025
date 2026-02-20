@@ -1,27 +1,78 @@
-<div class="contentCenter">Metas Financieras</div>
+<div class="section-header">
+  <h2>🎯 Metas Financieras</h2>
+  <p>Define cómo distribuir tu presupuesto mensual por categorías</p>
+</div>
 
-<div class="container">
-  <div class="sliders-container">
-    <div *ngFor="let meta of metas" class="meta-item">
-      <span class="meta-label">{{ meta.nombre }}</span>
+<div class="grid-2">
+  <!-- Sliders panel -->
+  <div class="card panel">
+    <div class="panel-header">
+      <span class="panel-title">Distribución del presupuesto</span>
+      <span class="total-badge" [class.ok]="totalOk" [class.bad]="!totalOk">
+        {{ total }}% / 100%
+      </span>
+    </div>
 
-      <input
-        type="range"
-        min="0"
-        max="100"
-        step="1"
-        [(ngModel)]="meta.valor"
-        (input)="ajustarValores(meta)"
-        [disabled]="meta.bloqueado || isLastUnlocked()"
-      />
+    <div class="metas-list">
+      <div class="meta-row" *ngFor="let m of metas">
+        <div class="meta-label">
+          <span class="meta-emoji">{{ m.emoji }}</span>
+          <span class="meta-name">{{ m.nombre }}</span>
+        </div>
+        <div class="meta-slider-wrap">
+          <input type="range" class="slider" [id]="'slider-' + m.nombre" min="0" max="100" [(ngModel)]="m.valor"
+            [disabled]="m.locked" (input)="onSliderChange(m)" />
+          <span class="meta-val">{{ m.valor }}%</span>
+        </div>
+        <button class="lock-btn" [class.locked]="m.locked" [id]="'lock-' + m.nombre" (click)="toggleLock(m)"
+          [title]="m.locked ? 'Desbloquear' : 'Bloquear'">
+          {{ m.locked ? '🔒' : '🔓' }}
+        </button>
 
-      <span class="meta-value">{{ meta.valor | number:'1.0-0' }}%</span>
+        <!-- mini progress bar -->
+        <div class="mini-bar">
+          <div class="mini-fill" [style.width.%]="m.valor"></div>
+        </div>
+      </div>
+    </div>
 
-      <button class="lock-btn" (click)="meta.bloqueado = !meta.bloqueado">
-        {{ meta.bloqueado ? '🔒' : '🔓' }}
+    <div class="panel-footer">
+      <p class="hint" *ngIf="!totalOk">⚠️ La suma debe ser exactamente 100%</p>
+      <button id="btn-save-metas" class="btn btn-primary w-full" (click)="save()" [disabled]="!totalOk">
+        💾 Guardar y recibir consejo
       </button>
+      <div class="saved-toast" *ngIf="saved">✅ ¡Metas guardadas!</div>
     </div>
   </div>
 
-  <button class="save-btn" (click)="guardarMetas()">Guardar</button>
+  <!-- Advice panel -->
+  <div class="card panel advice-panel">
+    <div class="panel-title">🤖 Consejo del Asesor IA</div>
+
+    <div *ngIf="!llmAdvice && !loadingAdvice" class="empty-advice">
+      <div style="font-size:48px">💡</div>
+      <p class="text-muted text-small">
+        Ajusta tus porcentajes y pulsa <strong>Guardar</strong> para recibir un análisis
+        personalizado de tu distribución presupuestal.
+      </p>
+    </div>
+
+    <div *ngIf="loadingAdvice" class="center-msg">
+      <div class="spinner" style="width:32px;height:32px;border-width:3px"></div>
+      <p class="text-muted mt-4">El asesor está analizando tu presupuesto…</p>
+    </div>
+
+    <div class="advice-text" *ngIf="llmAdvice && !loadingAdvice">
+      {{ llmAdvice }}
+    </div>
+
+    <!-- Visual donut substitute (percentage circles) -->
+    <div class="budget-pills" *ngIf="!loadingAdvice">
+      <div class="pill" *ngFor="let m of metas">
+        <div class="pill-pct">{{ m.valor }}%</div>
+        <div class="pill-lbl">{{ m.emoji }}</div>
+        <div class="pill-name">{{ m.nombre }}</div>
+      </div>
+    </div>
+  </div>
 </div>

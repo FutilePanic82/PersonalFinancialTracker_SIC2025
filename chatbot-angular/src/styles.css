@@ -1,89 +1,372 @@
-/* General styles for the body */
-body {
-  background-color: rgb(7, 7, 32); /* Fondo negro */
-  color: #ccc; /* Texto gris claro */
-  font-family: Arial, sans-serif;
+/* ═══════════════════════════════════════════════════
+   PERSONAL FINANCIAL TRACKER — Global Design System
+   ═══════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+/* ── Tokens ─────────────────────────────────────────── */
+:root {
+  --bg: #060612;
+  --bg-card: rgba(255, 255, 255, 0.04);
+  --bg-card-hov: rgba(255, 255, 255, 0.07);
+  --border: rgba(255, 255, 255, 0.08);
+  --accent: #7c3aed;
+  --accent-2: #06b6d4;
+  --accent-grd: linear-gradient(135deg, #7c3aed 0%, #06b6d4 100%);
+  --success: #10b981;
+  --danger: #ef4444;
+  --text: #e2e8f0;
+  --text-muted: #94a3b8;
+  --radius: 14px;
+  --sidebar-w: 260px;
+  --transition: 0.25s ease;
+}
+
+/* ── Reset ──────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
   margin: 0;
   padding: 0;
 }
 
-/* Sidebar */
-.sidebar {
-  position: fixed;
-  top: 0;
-  left: -250px; /* Initially hide sidebar */
-  width: 250px;
-  height: 100vh;
-  background-color: #333; /* Gris oscuro */
-  color: white;
-  transition: left 0.3s ease-in-out;
-  z-index: 1000; /* Make sure sidebar stays on top */
+html,
+body {
+  height: 100%;
+  font-family: 'Inter', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  overflow-x: hidden;
 }
 
-.sidebar.open {
-  left: 0; /* Show sidebar */
+/* scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
 }
 
-.sidebar .close-btn {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  font-size: 24px;
-  cursor: pointer;
-  color: white;
+::-webkit-scrollbar-track {
+  background: transparent;
 }
 
-.sidebar ul {
-  list-style: none;
-  padding: 20px;
+::-webkit-scrollbar-thumb {
+  background: var(--accent);
+  border-radius: 999px;
 }
 
-.sidebar ul li a {
-  color: #ccc; /* Gris claro para los enlaces */
-  text-decoration: none;
-  display: block;
-  padding: 10px;
-  font-size: 18px;
+
+/* ── Content area ─────────────────────────────────── */
+.page-content {
+  padding: 80px 24px 24px;
+  min-height: 100vh;
+  transition: margin-left var(--transition);
 }
 
-.sidebar ul li a:hover {
-  background-color: #444; /* Gris intermedio en hover */
+.page-content.shifted {
+  margin-left: var(--sidebar-w);
 }
 
-/* Content area */
-.content {
-  padding: 20px;
-  transition: margin-left 0.3s ease-in-out;
-  color: #ccc; /* Texto gris claro */
+/* ── Card / glass ──────────────────────────────────── */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  backdrop-filter: blur(12px);
+  transition: background var(--transition);
 }
 
-.content.shift {
-  margin-left: 250px; /* Move content to the right when sidebar is open */
+.card:hover {
+  background: var(--bg-card-hov);
 }
 
-/* Header button for toggle */
-header button {
-  background-color: #333; /* Gris oscuro */
-  color: white;
+/* ── Buttons ────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
   border: none;
-  padding: 15px;
-  font-size: 24px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
   cursor: pointer;
-  position: fixed;
-  top: 10px;
-  left: 10px;
-  z-index: 1100; /* To keep the button above the sidebar */
+  transition: all var(--transition);
 }
 
-header button:hover {
-  background-color: #444; /* Gris intermedio */
+.btn-primary {
+  background: var(--accent-grd);
+  color: #fff;
 }
 
-.logo {
-  position: fixed;
-  top: 15px; /* Ajusta la distancia desde el borde superior */
-  right: 15px; /* Ajusta la distancia desde el borde derecho */
-  width: clamp(100px, 10vw, 200px); /* Tamaño dinámico entre 100px y 200px */
-  height: auto; /* Mantiene la relación de aspecto */
-  z-index: 1200; /* Asegura que esté por encima de otros elementos */
+.btn-primary:hover {
+  opacity: 0.88;
+  transform: translateY(-1px);
+}
+
+.btn-secondary {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+.btn-secondary:hover {
+  background: var(--bg-card-hov);
+}
+
+.btn-danger {
+  background: var(--danger);
+  color: #fff;
+}
+
+.btn-danger:hover {
+  opacity: 0.88;
+}
+
+/* ── Form inputs ────────────────────────────────────── */
+.input-field {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 16px;
+  color: var(--text);
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color var(--transition);
+}
+
+.input-field:focus {
+  border-color: var(--accent);
+}
+
+.input-field::placeholder {
+  color: var(--text-muted);
+}
+
+.input-field option {
+  background: #1e1b4b;
+  /* Dark background for dropdown options */
+  color: var(--text);
+}
+
+/* ── Badges ─────────────────────────────────────────── */
+.badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.badge-income {
+  background: rgba(16, 185, 129, 0.18);
+  color: var(--success);
+}
+
+.badge-expense {
+  background: rgba(239, 68, 68, 0.18);
+  color: var(--danger);
+}
+
+/* ── Section header ─────────────────────────────────── */
+.section-header {
+  margin-bottom: 24px;
+}
+
+.section-header h2 {
+  font-size: 24px;
+  font-weight: 700;
+  background: var(--accent-grd);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.section-header p {
+  color: var(--text-muted);
+  font-size: 14px;
+  margin-top: 4px;
+}
+
+/* ── Stat cards ─────────────────────────────────────── */
+.stat-card {
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.stat-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  flex-shrink: 0;
+}
+
+.stat-icon.green {
+  background: rgba(16, 185, 129, 0.15);
+}
+
+.stat-icon.purple {
+  background: rgba(124, 58, 237, 0.15);
+}
+
+.stat-icon.cyan {
+  background: rgba(6, 182, 212, 0.15);
+}
+
+.stat-icon.red {
+  background: rgba(239, 68, 68, 0.15);
+}
+
+.stat-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.stat-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* ── Table ──────────────────────────────────────────── */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.data-table th {
+  text-align: left;
+  padding: 12px 16px;
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  border-bottom: 1px solid var(--border);
+}
+
+.data-table td {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.data-table tr:last-child td {
+  border-bottom: none;
+}
+
+.data-table tr:hover td {
+  background: var(--bg-card-hov);
+}
+
+/* ── Progress bar ───────────────────────────────────── */
+.progress-bar-track {
+  height: 8px;
+  background: rgba(255, 255, 255, 0.07);
+  border-radius: 999px;
+  overflow: hidden;
+  flex: 1;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent-grd);
+  transition: width 0.5s ease;
+}
+
+/* ── Loader spinner ─────────────────────────────────── */
+.spinner {
+  width: 22px;
+  height: 22px;
+  border: 3px solid rgba(255, 255, 255, 0.15);
+  border-top-color: var(--accent-2);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  display: inline-block;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ── Utilities ──────────────────────────────────────── */
+.mt-4 {
+  margin-top: 16px;
+}
+
+.mt-6 {
+  margin-top: 24px;
+}
+
+.mb-4 {
+  margin-bottom: 16px;
+}
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.flex {
+  display: flex;
+}
+
+.flex-between {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.gap-2 {
+  gap: 8px;
+}
+
+.gap-3 {
+  gap: 12px;
+}
+
+.gap-4 {
+  gap: 16px;
+}
+
+.w-full {
+  width: 100%;
+}
+
+.text-muted {
+  color: var(--text-muted);
+}
+
+.text-small {
+  font-size: 12px;
+}
+
+@media (max-width: 660px) {
+
+  .grid-2,
+  .grid-3 {
+    grid-template-columns: 1fr;
+  }
+
+  .page-content.shifted {
+    margin-left: 0;
+  }
 }

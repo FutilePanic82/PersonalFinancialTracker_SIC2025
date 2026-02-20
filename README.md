@@ -1,96 +1,160 @@
-# PersonalFinancialTracker_SIC2025
-# Chatbot de Finanzas Personales
+# 💰 Personal Financial Tracker — SIC 2025
 
-Este proyecto es un chatbot basado en FastAPI y Ollama, diseñado para ayudar a los usuarios a organizar sus finanzas personales. El chatbot interactúa con los usuarios, clasifica ingresos y gastos en categorías específicas y genera un archivo Excel con los datos recopilados.
+Chatbot de finanzas personales con **Inteligencia Artificial** que registra ingresos y gastos mediante lenguaje natural, los clasifica automáticamente usando **SVM + DistilBERT**, y predice tu gasto mensual con **Regresión Polinómica**.
 
-## Características
-- Interacción en tiempo real a través de una API REST.
-- Clasificación automática de ingresos y gastos mediante un modelo de Machine Learning.
-- Generación de un archivo Excel con el historial financiero del usuario.
-- Implementación de CORS para permitir peticiones desde un frontend en Angular.
+## ✨ Características
 
-## Tecnologías Utilizadas
-- **Backend:** FastAPI (Python)
-- **Modelo de lenguaje:** Ollama con el modelo `llama3.2:3b`
-- **Procesamiento de datos:** Pandas, JSON
-- **Generación de Excel:** XlsxWriter
-- **Frontend:** Angular (ubicado en un repositorio separado)
+| Módulo                         | Descripción                                                                                                    |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------------- |
+| 💬 **Chatbot Conversacional**  | Interacción en lenguaje natural con LLM (Ollama / LLaMA 3.2). El usuario declara gastos e ingresos libremente. |
+| 🤖 **Clasificación en Tiempo Real** | Cada concepto se clasifica automáticamente en categoría usando SVM + DistilBERT embeddings.               |
+| 🗄️ **Persistencia en SQLite** | Todas las transacciones se guardan en base de datos, consultables desde el historial.                          |
+| 📊 **Análisis de Gastos**      | Resumen por categoría con barras de progreso + predictor de gasto mensual (Regresión Polinómica grado 2).      |
+| 🎯 **Metas Financieras**       | Sliders interactivos para distribuir presupuesto por categoría + consejo del asesor IA.                        |
+| 📥 **Exportar a Excel**        | Genera un `.xlsx` formateado con todas las transacciones registradas.                                          |
 
-## Instalación
+## 🏗️ Arquitectura
+
+```
+PersonalFinancialTracker_SIC2025/
+├── Backend&Algorithms/
+│   ├── server.py              # FastAPI — API principal
+│   ├── database.py            # SQLite — persistencia
+│   ├── classifier.py          # SVM + DistilBERT — clasificador de categorías
+│   ├── predictor.py           # Regresión Polinómica — predicción de gasto
+│   ├── modelo_svm_entrenado.pkl
+│   ├── pca_entrenado.pkl
+│   ├── le_entrenado.pkl
+│   ├── requirements.txt
+│   ├── SVM3.py                # Script de entrenamiento SVM (referencia)
+│   ├── NLPBERT.py             # NLP/BERT utilities (referencia)
+│   └── RegresionPolinomica.py # Script de entrenamiento regresión (referencia)
+├── DataBase/
+│   ├── dataset_gestor_gastos.csv   # Dataset para regresión polinómica
+│   └── ...otros CSVs de referencia
+├── chatbot-angular/           # Frontend Angular
+│   └── src/
+│       ├── app/
+│       │   ├── chatbot/            # 💬 Chat principal
+│       │   ├── historial/          # 📋 Historial de transacciones
+│       │   ├── analisis-gastos/    # 📊 Análisis + predictor
+│       │   ├── metas-financieras/  # 🎯 Distribución de presupuesto
+│       │   ├── contacto/           # 📩 Contacto / Acerca de
+│       │   └── services/
+│       │       └── finanzas.service.ts  # Servicio HTTP unificado
+│       ├── styles.css              # Design system global
+│       ├── main.ts
+│       └── index.html
+└── README.md
+```
+
+## 🛠️ Tecnologías
+
+- **Backend:** Python · FastAPI · Uvicorn
+- **LLM:** Ollama con `llama3.2:3b`
+- **ML — Clasificación:** SVM (scikit-learn) + DistilBERT (Hugging Face Transformers)
+- **ML — Predicción:** Regresión Polinómica grado 2 (scikit-learn)
+- **Base de Datos:** SQLite
+- **Frontend:** Angular 17+ (standalone components)
+- **Excel:** XlsxWriter / Pandas
+
+## 🚀 Instalación y Ejecución
 
 ### 1. Clonar el Repositorio
+
 ```bash
 git clone https://github.com/FutilePanic82/PersonalFinancialTracker_SIC2025
+cd PersonalFinancialTracker_SIC2025
 ```
 
-### 2. Crear un Entorno Virtual (Opcional pero Recomendado)
+### 2. Backend — Python
+
 ```bash
+cd "Backend&Algorithms"
 python -m venv venv
-source venv/bin/activate  # En Windows: venv\Scripts\activate
-```
-
-### 3. Instalar Dependencias
-```bash
+source venv/bin/activate        # En Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### 4. Iniciar Ollama y Descargar el Modelo
-Ollama debe estar en ejecución y el modelo `llama3.2:3b` debe estar disponible. Si no lo tienes, descárgalo con:
+### 3. Instalar y ejecutar Ollama
+
 ```bash
+# Instalar Ollama (https://ollama.com)
 ollama pull llama3.2:3b
+ollama serve                    # Dejar corriendo en otra terminal
 ```
 
-### 5. Ejecutar el Servidor
+### 4. Iniciar el Backend
+
 ```bash
+cd "Backend&Algorithms"
 uvicorn server:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-## Endpoints de la API
+### 5. Frontend — Angular
 
-### 1. Conversación con el Chatbot
-**Endpoint:** `POST /conversation`
+```bash
+cd chatbot-angular
+npm install
+ng serve                        # http://localhost:4200
+```
 
-**Ejemplo de solicitud:**
+## 📡 API Endpoints
+
+| Método   | Ruta            | Descripción                                                       |
+| -------- | --------------- | ----------------------------------------------------------------- |
+| `POST`   | `/conversation` | Envía mensaje; extrae y clasifica transacciones automáticamente   |
+| `GET`    | `/historial`    | Retorna todas las transacciones almacenadas                       |
+| `POST`   | `/finalize`     | Genera y descarga archivo Excel                                   |
+| `POST`   | `/predict`      | Predicción de gasto (regresión polinómica)                        |
+| `POST`   | `/metas`        | Recibe distribución de presupuesto, devuelve consejo del asesor IA|
+| `DELETE` | `/reset`        | Reinicia conversación en memoria                                  |
+
+### Ejemplo — `/conversation`
+
+**Request:**
 ```json
 {
   "chat_history": [
-    {"role": "user", "content": "Gané 5000 este mes y gasté 2000 en comida."}
+    { "role": "user", "content": "Gasté $500 en comida y recibí $15000 de sueldo" }
   ]
 }
 ```
 
-**Ejemplo de respuesta:**
+**Response:**
 ```json
 {
-  "response": "Entiendo, he registrado tus ingresos y gastos."
+  "response": "He registrado tu gasto de $500 en comida y tu ingreso de $15,000.",
+  "transacciones_detectadas": [
+    { "concepto": "comida", "monto": 500, "categoria": "Alimentación", "tipo": "gasto" },
+    { "concepto": "sueldo", "monto": 15000, "categoria": "Ingresos", "tipo": "ingreso" }
+  ]
 }
 ```
 
-### 2. Generar Archivo Excel
-**Endpoint:** `POST /finalize`
+### Ejemplo — `/predict`
 
-**Ejemplo de solicitud:**
+**Request:**
+```json
+{ "ingresos": 15000, "hijos": 1, "edad": 30, "educacion": 2 }
+```
+
+**Response:**
 ```json
 {
-  "chat_history": []
+  "gasto_predicho": 11250.50,
+  "r2": 0.8724,
+  "ahorro_estimado": 3749.50
 }
 ```
 
-**Respuesta:** Archivo Excel generado con los datos organizados.
+## 📄 Licencia
 
-## Errores Comunes y Soluciones
-
-### 1. `model "llama3.2:3b" not found`
-- Asegúrate de haber descargado el modelo con `ollama pull llama3.2:3b`.
-- Verifica que Ollama está en ejecución.
-
-### 2. `El LLM devolvió una respuesta no válida en JSON`
-- Revisa los logs del servidor (`logs/server.log`) para ver la respuesta completa del LLM.
-- Asegúrate de que el historial de chat tenga contexto suficiente antes de llamar a `/finalize`.
-
-## Contribuciones
-Si deseas contribuir, abre un issue o un pull request en el repositorio. Apreciamos cualquier mejora en el código o documentación.
-
-## Licencia
 Este proyecto está bajo la Licencia MIT.
 
+
+## 📊 Métricas de Pruebas Sintéticas
+
+![Metrics Summary](Backend&Algorithms/metrics_summary.png)
+
+> Generado automáticamente el 2026-02-19 23:38

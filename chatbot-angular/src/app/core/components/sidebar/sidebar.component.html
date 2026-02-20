@@ -1,0 +1,40 @@
+<div class="overlay" [class.visible]="isOpen" (click)="closeSidebar()"></div>
+
+<nav class="sidebar" [class.open]="isOpen">
+    <div class="sidebar-logo">
+        <div class="sidebar-logo-icon">💰</div>
+        <div class="sidebar-logo-text">
+            FinTracker
+            <small>SIC 2025</small>
+        </div>
+    </div>
+    <ul>
+        <li>
+            <a routerLink="/" routerLinkActive="active-link" [routerLinkActiveOptions]="{exact:true}"
+                (click)="closeSidebar()">
+                <span class="nav-icon">💬</span> Chatbot
+            </a>
+        </li>
+        <li>
+            <a routerLink="/historial" routerLinkActive="active-link" (click)="closeSidebar()">
+                <span class="nav-icon">📋</span> Historial
+            </a>
+        </li>
+        <li>
+            <a routerLink="/analisis" routerLinkActive="active-link" (click)="closeSidebar()">
+                <span class="nav-icon">📊</span> Análisis
+            </a>
+        </li>
+        <li>
+            <a routerLink="/metas" routerLinkActive="active-link" (click)="closeSidebar()">
+                <span class="nav-icon">🎯</span> Metas Financieras
+            </a>
+        </li>
+        <li>
+            <a routerLink="/contacto" routerLinkActive="active-link" (click)="closeSidebar()">
+                <span class="nav-icon">📩</span> Contacto
+            </a>
+        </li>
+    </ul>
+    <div class="sidebar-footer">Personal Financial Tracker © 2025</div>
+</nav>
