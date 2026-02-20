@@ -36,6 +36,13 @@ echo ""
 
 [ -d "$VENV_DIR" ] || fail "Virtual environment not found. Run ./setup.sh first."
 
+# Read LLM mode from .env
+LLM_MODE="ollama"
+if [ -f "$ROOT_DIR/.env" ]; then
+    LLM_MODE=$(grep -E '^LLM_MODE=' "$ROOT_DIR/.env" | cut -d= -f2 | tr -d ' ')
+fi
+info "LLM Mode: $LLM_MODE"
+
 # Stop any previously running instances
 if [ -f "$PID_FILE" ]; then
     warn "Found previous PID file, cleaning up..."
@@ -44,35 +51,42 @@ fi
 
 mkdir -p "$LOG_DIR"
 
-# ── 1. Ollama ───────────────────────────────────────────────────────────────
-info "Starting Ollama server..."
+# ── 1. Ollama (solo en modo local) ──────────────────────────────────────────
+if [ "$LLM_MODE" = "ollama" ]; then
+    info "Starting Ollama server..."
 
-# Check if ollama is already serving
-if curl -s http://localhost:11434/api/tags >/dev/null 2>&1; then
-    ok "Ollama already running on :11434"
-    OLLAMA_PID="external"
-else
-    ollama serve > "$LOG_DIR/ollama.log" 2>&1 &
-    OLLAMA_PID=$!
-    # Wait for ollama to be ready
-    for i in $(seq 1 15); do
-        if curl -s http://localhost:11434/api/tags >/dev/null 2>&1; then
-            break
-        fi
-        sleep 1
-    done
+    # Check if ollama is already serving
     if curl -s http://localhost:11434/api/tags >/dev/null 2>&1; then
-        ok "Ollama started (PID $OLLAMA_PID) — :11434"
-
-        # Check for model existence and pull if missing
-        if ! ollama list | grep -q "llama3.2:3b"; then
-            info "Model llama3.2:3b not found. Pulling now..."
-            ollama pull llama3.2:3b
-            ok "Model llama3.2:3b pulled"
-        fi
+        ok "Ollama already running on :11434"
+        OLLAMA_PID="external"
     else
-        warn "Ollama may still be starting — check $LOG_DIR/ollama.log"
+        ollama serve > "$LOG_DIR/ollama.log" 2>&1 &
+        OLLAMA_PID=$!
+        # Wait for ollama to be ready
+        for i in $(seq 1 15); do
+            if curl -s http://localhost:11434/api/tags >/dev/null 2>&1; then
+                break
+            fi
+            sleep 1
+        done
+        if curl -s http://localhost:11434/api/tags >/dev/null 2>&1; then
+            ok "Ollama started (PID $OLLAMA_PID) — :11434"
+
+            # Check for model existence and pull if missing
+            LLM_MODEL_NAME=$(grep -E '^LLM_MODEL=' "$ROOT_DIR/.env" 2>/dev/null | cut -d= -f2 | tr -d ' ')
+            LLM_MODEL_NAME="${LLM_MODEL_NAME:-llama3.2:3b}"
+            if ! ollama list | grep -q "$LLM_MODEL_NAME"; then
+                info "Model $LLM_MODEL_NAME not found. Pulling now..."
+                ollama pull "$LLM_MODEL_NAME"
+                ok "Model $LLM_MODEL_NAME pulled"
+            fi
+        else
+            warn "Ollama may still be starting — check $LOG_DIR/ollama.log"
+        fi
     fi
+else
+    info "Modo API ($LLM_MODE) — Ollama no es necesario"
+    OLLAMA_PID="none"
 fi
 
 # ── 2. Backend (FastAPI + Uvicorn) ──────────────────────────────────────────
@@ -135,7 +149,10 @@ echo -e "${GREEN}║                                                      ║${N
 echo -e "${GREEN}║   🌐 Frontend:  http://localhost:4200                ║${NC}"
 echo -e "${GREEN}║   ⚙️  Backend:   http://localhost:8000                ║${NC}"
 echo -e "${GREEN}║   📄 API Docs:  http://localhost:8000/docs           ║${NC}"
+if [ "$LLM_MODE" = "ollama" ]; then
 echo -e "${GREEN}║   🤖 Ollama:    http://localhost:11434               ║${NC}"
+fi
+echo -e "${GREEN}║   🧠 LLM Mode:  $LLM_MODE$(printf '%*s' $((35 - ${#LLM_MODE})) '')║${NC}"
 echo -e "${GREEN}║                                                      ║${NC}"
 echo -e "${GREEN}║   To stop:  ./stop.sh                               ║${NC}"
 echo -e "${GREEN}╚══════════════════════════════════════════════════════╝${NC}"

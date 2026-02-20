@@ -61,11 +61,32 @@ pip install --upgrade pip -q
 pip install -r "$BACKEND_DIR/requirements.txt" -q
 ok "Python dependencies installed"
 
-# ── 3. Ollama — pull model ──────────────────────────────────────────────────
+# ── 3. LLM Configuration ───────────────────────────────────────────────────
 echo ""
-info "Pulling Ollama model llama3.2:3b (skip if already pulled)..."
-ollama pull llama3.2:3b
-ok "Ollama model llama3.2:3b ready"
+info "Configuring LLM provider..."
+if [ ! -f "$ROOT_DIR/.env" ]; then
+    bash "$ROOT_DIR/configure.sh"
+else
+    ok "LLM already configured (.env exists). Run ./configure.sh to change."
+fi
+
+# Read mode from .env
+LLM_MODE="ollama"
+if [ -f "$ROOT_DIR/.env" ]; then
+    LLM_MODE=$(grep -E '^LLM_MODE=' "$ROOT_DIR/.env" | cut -d= -f2 | tr -d ' ')
+fi
+
+echo ""
+if [ "$LLM_MODE" = "ollama" ]; then
+    info "Pulling Ollama model (modo GPU local)..."
+    LLM_MODEL=$(grep -E '^LLM_MODEL=' "$ROOT_DIR/.env" 2>/dev/null | cut -d= -f2 | tr -d ' ')
+    LLM_MODEL="${LLM_MODEL:-llama3.2:3b}"
+    ollama pull "$LLM_MODEL"
+    ok "Ollama model $LLM_MODEL ready"
+else
+    info "Modo API ($LLM_MODE) — no se necesita Ollama"
+    ok "Skipping Ollama pull"
+fi
 
 # ── 4. Angular frontend dependencies ────────────────────────────────────────
 echo ""

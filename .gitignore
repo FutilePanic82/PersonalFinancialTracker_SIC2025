@@ -46,4 +46,8 @@ Backend&Algorithms/reportes/
 
 # Gemini agent
 .gemini/
+
+# Environment config (API keys)
+.env
+.logs/
 Backend

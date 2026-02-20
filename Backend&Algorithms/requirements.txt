@@ -2,6 +2,9 @@ fastapi
 uvicorn[standard]
 pydantic
 ollama
+python-dotenv
+openai
+groq
 pandas
 numpy
 joblib

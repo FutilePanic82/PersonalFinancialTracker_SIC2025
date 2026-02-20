@@ -21,7 +21,7 @@ import os
 from datetime import datetime
 from io import BytesIO
 
-import ollama
+
 import pandas as pd
 from fastapi import FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -30,10 +30,8 @@ from pydantic import BaseModel
 
 from classifier import clasificar
 from database import init_db, insertar_transaccion, obtener_transacciones, insertar_reporte, obtener_reportes
+from llm_provider import llm_chat, LLM_MODE, LLM_MODEL
 from predictor import predecir
-
-# ── Constants ──────────────────────────────────────────────────────────────────
-LLM_MODEL = "llama3.2:3b"
 
 # ── Logging ────────────────────────────────────────────────────────────────────
 logging.basicConfig(
@@ -95,10 +93,8 @@ class MetasRequest(BaseModel):
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 def _llm(messages: list[dict]) -> str:
-    """Call Ollama and strip any <think> tags from the response."""
-    resp = ollama.chat(model=LLM_MODEL, messages=messages)
-    text = resp["message"]["content"]
-    return re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
+    """Call the configured LLM backend (Ollama / OpenAI / Groq)."""
+    return llm_chat(messages)
 
 
 def _extract_transactions(user_msg: str) -> list[dict]:
