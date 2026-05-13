@@ -1,0 +1,15 @@
+[project]
+requires-python = ">=3.10"
+
+[lint]
+target-version = "py310"
+
+[lint.rule-select]
+all = ["E", "F", "W", "I", "N", "UP", "B", "C4", "SIM"]
+
+[lint.ignore]
+E501 = "line too long"
+
+[messages]
+extend-select = ["B", "SIM"]
+extend-ignore = ["E501"]

@@ -1,5 +1,8 @@
 # 💰 Personal Financial Tracker — SIC 2025
 
+[![CI](https://github.com/futilepanic82/PersonalFinancialTracker_SIC2025/actions/workflows/ci.yml/badge.svg)](https://github.com/futilepanic82/PersonalFinancialTracker_SIC2025/actions/workflows/ci.yml)
+[![Dependabot](https://img.shields.io/badge/dependabot-enabled-brightgreen?logo=dependabot)](https://github.com/futilepanic82/PersonalFinancialTracker_SIC2025/network/updates)
+
 Un asistente de finanzas personales impulsado por **Inteligencia Artificial** que te permite registrar tus ingresos y gastos mediante lenguaje natural. El sistema clasifica automáticamente tus transacciones utilizando **SVM + DistilBERT** y predice tu comportamiento de gasto mensual a través de **Regresión Polinómica**.
 
 ---

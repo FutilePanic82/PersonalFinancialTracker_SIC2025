@@ -1,0 +1,36 @@
+{
+  "root": true,
+  "parser": "@angular-eslint/parser",
+  "plugins": ["@angular-eslint"],
+  "extends": [
+    "eslint:recommended",
+    "plugin:@angular-eslint/recommended"
+  ],
+  "rules": {
+    "@angular-eslint/component-selector": [
+      "error",
+      { "type": "element", "prefix": "app", "style": "kebab-case" }
+    ],
+    "@angular-eslint/directive-selector": [
+      "error",
+      { "type": "attribute", "prefix": "app", "style": "camelCase" }
+    ],
+    "@angular-eslint/no-input-rename": "error",
+    "@angular-eslint/no-output-rename": "error",
+    "@angular-eslint/use-lifecycle-interface": "error",
+    "@angular-eslint/use-injectable-provider": "error",
+    "@angular-eslint/no-conflicting-lifecycle": "error",
+    "@angular-eslint/no-inputs-metadata-property": "error",
+    "@angular-eslint/no-outputs-metadata-property": "error",
+    "@angular-eslint/no-host-metadata-property": "error",
+    "@typescript-eslint/no-explicit-any": "warn",
+    "@typescript-eslint/explicit-module-boundary-types": "off",
+    "no-console": ["warn", { "allow": ["warn", "error"] }]
+  },
+  "overrides": [
+    {
+      "files": ["*.ts"],
+      "excludedFiles": ["*.spec.ts"]
+    }
+  ]
+}
