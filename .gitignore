@@ -45,6 +45,7 @@ Backend&Algorithms/reportes/
 
 # Gemini agent
 .gemini/
+.agent/skills/angular-best-practices
 
 # Environment config (API keys)
 .env
